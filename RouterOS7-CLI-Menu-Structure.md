@@ -1,591 +1,591 @@
 # RouterOS 7 CLI Structure
+```RouterOS
+- /caps-man ; # Manages centralized wireless networks via CAPsMAN
+  - /caps-man aaa ; # Authentication, Authorization, and Accounting for CAPsMAN
+  - /caps-man access-list ; # Access list rules for CAPsMAN wireless clients
+  - /caps-man actual-interface-configuration ; # Displays actual interface configs applied by CAPsMAN
+  - /caps-man channel ; # Defines radio channel parameters for CAPsMAN
+  - /caps-man configuration ; # CAPsMAN configuration profiles
+  - /caps-man datapath ; # Controls data forwarding paths in CAPsMAN
+  - /caps-man interface ; # Virtual CAPsMAN interfaces
+  - /caps-man manager ; # CAPsMAN manager service settings
+    - /caps-man manager interface ; # Network interface for the CAPsMAN manager
+  - /caps-man provisioning ; # Automatic provisioning rules for newly connected CAPs
+  - /caps-man radio ; # Radio-specific parameters in CAPsMAN
+  - /caps-man rates ; # Configure wireless data rates used by CAPsMAN
+  - /caps-man registration-table ; # Shows registered wireless clients under CAPsMAN
+  - /caps-man remote-cap ; # Manages remote wireless CAP instances
+  - /caps-man security ; # Wireless security profiles for CAPsMAN
 
-- `/caps-man ; # Manages centralized wireless networks via CAPsMAN`
-  - `/caps-man aaa ; # Authentication, Authorization, and Accounting for CAPsMAN`
-  - `/caps-man access-list ; # Access list rules for CAPsMAN wireless clients`
-  - `/caps-man actual-interface-configuration ; # Displays actual interface configs applied by CAPsMAN`
-  - `/caps-man channel ; # Defines radio channel parameters for CAPsMAN`
-  - `/caps-man configuration ; # CAPsMAN configuration profiles`
-  - `/caps-man datapath ; # Controls data forwarding paths in CAPsMAN`
-  - `/caps-man interface ; # Virtual CAPsMAN interfaces`
-  - `/caps-man manager ; # CAPsMAN manager service settings`
-    - `/caps-man manager interface ; # Network interface for the CAPsMAN manager`
-  - `/caps-man provisioning ; # Automatic provisioning rules for newly connected CAPs`
-  - `/caps-man radio ; # Radio-specific parameters in CAPsMAN`
-  - `/caps-man rates ; # Configure wireless data rates used by CAPsMAN`
-  - `/caps-man registration-table ; # Shows registered wireless clients under CAPsMAN`
-  - `/caps-man remote-cap ; # Manages remote wireless CAP instances`
-  - `/caps-man security ; # Wireless security profiles for CAPsMAN`
+- /certificate ; # Manages SSL/TLS certificates
+  - /certificate crl ; # Certificate Revocation List management
+  - /certificate scep-server ; # SCEP (Simple Certificate Enrollment Protocol) server
+    - /certificate scep-server otp ; # One-time password configuration for SCEP
+    - /certificate scep-server ra ; # Registration Authority settings for SCEP
+    - /certificate scep-server requests ; # Pending or processed certificate requests
+  - /certificate settings ; # Global certificate settings
 
-- `/certificate ; # Manages SSL/TLS certificates`
-  - `/certificate crl ; # Certificate Revocation List management`
-  - `/certificate scep-server ; # SCEP (Simple Certificate Enrollment Protocol) server`
-    - `/certificate scep-server otp ; # One-time password configuration for SCEP`
-    - `/certificate scep-server ra ; # Registration Authority settings for SCEP`
-    - `/certificate scep-server requests ; # Pending or processed certificate requests`
-  - `/certificate settings ; # Global certificate settings`
+- /console ; # RouterOS console management
+  - /console settings ; # Additional console configuration parameters
 
-- `/console ; # RouterOS console management`
-  - `/console settings ; # Additional console configuration parameters`
+- /container ; # Management of container instances in RouterOS
+  - /container config ; # Base configuration for container runtime
+  - /container envs ; # Environment variables for containers
+  - /container mounts ; # Directory mounts or bind-mounts for containers
 
-- `/container ; # Management of container instances in RouterOS`
-  - `/container config ; # Base configuration for container runtime`
-  - `/container envs ; # Environment variables for containers`
-  - `/container mounts ; # Directory mounts or bind-mounts for containers`
+- /disk ; # Disk management and settings
+  - /disk btrfs ; # BTRFS filesystem operations
+    - /disk btrfs filesystem ; # Configure and manage BTRFS subvolumes
+  - /disk settings ; # Global disk-related configuration
 
-- `/disk ; # Disk management and settings`
-  - `/disk btrfs ; # BTRFS filesystem operations`
-    - `/disk btrfs filesystem ; # Configure and manage BTRFS subvolumes`
-  - `/disk settings ; # Global disk-related configuration`
+- /dude ; # The Dude network monitoring system
+  - /dude agent ; # Dude agent configuration
+  - /dude device ; # Managed devices within The Dude
+  - /dude device-type ; # Definitions or templates for device types
+  - /dude notification ; # Notification channels and rules
+  - /dude probe ; # Monitoring probes used by The Dude
+  - /dude ros ; # RouterOS-specific monitoring integrations
+    - /dude ros address ; # IP or DNS address info for monitored RouterOS
+    - /dude ros arp ; # ARP table monitoring
+    - /dude ros health ; # Router health status
+    - /dude ros interface ; # Interface statistics
+    - /dude ros lease ; # DHCP lease monitoring
+    - /dude ros neighbor ; # Monitors neighbors discovered on RouterOS
+    - /dude ros queue ; # Queue usage and configuration data
+    - /dude ros registration-table ; # Wireless registration data
+    - /dude ros resource ; # System resources monitoring
+    - /dude ros route ; # Routing table data
+    - /dude ros routerboard ; # RouterBOARD details and health
+  - /dude service ; # Services that can be probed or monitored
+  - /dude settings ; # Global configuration for The Dude server
 
-- `/dude ; # The Dude network monitoring system`
-  - `/dude agent ; # Dude agent configuration`
-  - `/dude device ; # Managed devices within The Dude`
-  - `/dude device-type ; # Definitions or templates for device types`
-  - `/dude notification ; # Notification channels and rules`
-  - `/dude probe ; # Monitoring probes used by The Dude`
-  - `/dude ros ; # RouterOS-specific monitoring integrations`
-    - `/dude ros address ; # IP or DNS address info for monitored RouterOS`
-    - `/dude ros arp ; # ARP table monitoring`
-    - `/dude ros health ; # Router health status`
-    - `/dude ros interface ; # Interface statistics`
-    - `/dude ros lease ; # DHCP lease monitoring`
-    - `/dude ros neighbor ; # Monitors neighbors discovered on RouterOS`
-    - `/dude ros queue ; # Queue usage and configuration data`
-    - `/dude ros registration-table ; # Wireless registration data`
-    - `/dude ros resource ; # System resources monitoring`
-    - `/dude ros route ; # Routing table data`
-    - `/dude ros routerboard ; # RouterBOARD details and health`
-  - `/dude service ; # Services that can be probed or monitored`
-  - `/dude settings ; # Global configuration for The Dude server`
+- /file ; # Local file system management
+  - /file rsync-daemon ; # rsync daemon settings
+  - /file sync ; # Synchronization commands for files
 
-- `/file ; # Local file system management`
-  - `/file rsync-daemon ; # rsync daemon settings`
-  - `/file sync ; # Synchronization commands for files`
+- /interface ; # All network interface management
+  - /interface 6to4 ; # 6to4 tunneling interface
+  - /interface bonding ; # Link aggregation/bonding configuration
+  - /interface bridge ; # Ethernet bridging and associated features
+    - /interface bridge calea ; # CALEA (lawful intercept) settings
+    - /interface bridge filter ; # Bridge-level filtering rules
+    - /interface bridge host ; # Known MAC addresses on the bridge
+    - /interface bridge mdb ; # Multicast Database (for IGMP/MLD snooping)
+    - /interface bridge mlag ; # Multi-chassis Link Aggregation Group
+    - /interface bridge msti ; # Multiple Spanning Tree Instances
+    - /interface bridge nat ; # NAT on bridge interfaces
+    - /interface bridge port ; # Ports added to the bridge
+      - /interface bridge port mst-override ; # MSTP (Multiple Spanning Tree) override per port
+    - /interface bridge port-controller ; # Controls port behavior for advanced bridging
+      - /interface bridge port-controller device ; # Device-level settings for the port controller
+      - /interface bridge port-controller port ; # Per-port settings for the port controller
+        - /interface bridge port-controller port poe ; # Power over Ethernet controls on port
+    - /interface bridge port-extender ; # Extends bridging across additional hardware
+    - /interface bridge settings ; # Global bridge settings
+    - /interface bridge vlan ; # VLAN handling on bridge
+      - /interface bridge vlan mvrp ; # MVRP (Multiple VLAN Registration Protocol)
+  - /interface detect-internet ; # Automatic internet detection feature
+    - /interface detect-internet state ; # Shows real-time detection status
+  - /interface dot1x ; # 802.1X authentication subsystem
+    - /interface dot1x client ; # 802.1X supplicant (client) configuration
+    - /interface dot1x server ; # 802.1X server (authenticator) settings
+      - /interface dot1x server active ; # Displays active 802.1X sessions
+      - /interface dot1x server state ; # Server status and session states
+  - /interface eoip ; # EoIP (Ethernet over IP) tunnel
+  - /interface eoipv6 ; # EoIP tunnel over IPv6
+  - /interface ethernet ; # Physical Ethernet interfaces
+    - /interface ethernet poe ; # Power over Ethernet settings
+    - /interface ethernet switch ; # Switch-chip-level configurations
+      - /interface ethernet switch acl ; # Access Control Lists on the switch
+        - /interface ethernet switch acl policer ; # Policing and rate-limiting under ACL
+      - /interface ethernet switch dscp-qos-map ; # DSCP-based QoS mapping table
+      - /interface ethernet switch dscp-to-dscp ; # DSCP remarking from one DSCP to another
+      - /interface ethernet switch egress-vlan-tag ; # VLAN tagging rules on egress
+      - /interface ethernet switch egress-vlan-translation ; # Translates VLAN ID on egress
+      - /interface ethernet switch host ; # MAC addresses known by the switch
+      - /interface ethernet switch ingress-port-policer ; # Policing per ingress port
+      - /interface ethernet switch ingress-vlan-translation ; # VLAN ID translation on ingress
+      - /interface ethernet switch l3hw-settings ; # Hardware offload for layer-3 switching
+        - /interface ethernet switch l3hw-settings advanced ; # Advanced L3 offload parameters
+      - /interface ethernet switch mac-based-vlan ; # Assign VLAN by source MAC
+      - /interface ethernet switch one2one-vlan-switching ; # One-to-one VLAN mapping
+      - /interface ethernet switch policer-qos-map ; # QoS mapping and policing combined
+      - /interface ethernet switch port ; # Switch port configuration
+      - /interface ethernet switch port-isolation ; # Isolate ports from each other
+      - /interface ethernet switch port-leakage ; # Controls traffic leakage among ports
+      - /interface ethernet switch protocol-based-vlan ; # Assign VLAN by layer-2 protocol
+      - /interface ethernet switch qos ; # Quality of Service on switch
+        - /interface ethernet switch qos map ; # Detailed QoS mapping rules
+          - /interface ethernet switch qos map ip ; # IP-based QoS mapping
+          - /interface ethernet switch qos map vlan ; # VLAN-based QoS mapping
+        - /interface ethernet switch qos port ; # Per-port QoS settings
+        - /interface ethernet switch qos priority-flow-control ; # Priority-based flow control
+        - /interface ethernet switch qos profile ; # QoS profile configuration
+        - /interface ethernet switch qos settings ; # Global QoS settings on the switch
+        - /interface ethernet switch qos tx-manager ; # Transmission queue manager
+          - /interface ethernet switch qos tx-manager queue ; # Configuration per TX queue
+      - /interface ethernet switch qos-group ; # Grouping mechanism for QoS
+      - /interface ethernet switch reserved-fdb ; # Reserved entries in forwarding DB
+      - /interface ethernet switch rule ; # Switch rules for packet handling
+      - /interface ethernet switch shaper ; # Traffic shaping within the switch
+      - /interface ethernet switch trunk ; # Trunk port configuration
+      - /interface ethernet switch unicast-fdb ; # Unicast forwarding database
+      - /interface ethernet switch vlan ; # VLAN settings on the switch
+  - /interface gre ; # GRE (Generic Routing Encapsulation) interface
+  - /interface list ; # Grouping mechanism for interfaces
+    - /interface list member ; # Interfaces belonging to a list
+  - /interface lte ; # LTE (4G/5G) modem interfaces
+    - /interface lte apn ; # Access Point Name profiles
+    - /interface lte esim ; # eSIM provisioning and management
+    - /interface lte settings ; # Global LTE modem settings
+  - /interface macsec ; # MAC Security (802.1AE) interface
+    - /interface macsec profile ; # Security profiles and keys
+  - /interface macvlan ; # MACVLAN interface
+  - /interface mesh ; # MESH (layer-2) interface
+    - /interface mesh fdb ; # Forwarding database for mesh
+    - /interface mesh port ; # Ports joined to the mesh
+  - /interface ovpn-client ; # OpenVPN client configuration
+  - /interface ovpn-server ; # OpenVPN server instance
+    - /interface ovpn-server server ; # Server settings for OpenVPN
+  - /interface ppp-client ; # Point-to-Point Protocol client
+  - /interface ppp-server ; # PPP server
+  - /interface pppoe-client ; # PPPoE client interface
+  - /interface pppoe-server ; # PPPoE server
+    - /interface pppoe-server server ; # Settings for PPPoE server
+  - /interface pptp-client ; # PPTP client interface
+  - /interface pptp-server ; # PPTP server
+    - /interface pptp-server server ; # PPTP server configuration
+  - /interface sstp-client ; # SSTP (Secure Socket Tunneling) client
+  - /interface sstp-server ; # SSTP server
+    - /interface sstp-server server ; # SSTP server settings
+  - /interface veth ; # Virtual Ethernet interface
+  - /interface vlan ; # VLAN interface
+  - /interface vpls ; # Virtual Private LAN Service
+  - /interface vrrp ; # VRRP (Virtual Router Redundancy Protocol)
+  - /interface vxlan ; # VXLAN (Virtual Extensible LAN) interface
+    - /interface vxlan fdb ; # VXLAN forwarding database
+    - /interface vxlan vteps ; # VXLAN tunnel endpoint settings
+  - /interface wifi ; # Wi-Fi Wave2 interface
+    - /interface wifi aaa ; # AAA parameters for Wave2 Wi-Fi
+    - /interface wifi access-list ; # Access-list rules for Wave2 wireless
+    - /interface wifi cap ; # Wave2 CAP (Controlled Access Point)
+    - /interface wifi capsman ; # CAPsMAN integration for Wave2
+      - /interface wifi capsman remote-cap ; # Manage remote Wave2 CAP devices
+    - /interface wifi channel ; # Radio channels for Wave2
+    - /interface wifi configuration ; # Configuration profiles for Wave2
+    - /interface wifi datapath ; # Data forwarding settings for Wave2
+    - /interface wifi interworking ; # Hotspot 2.0 / interworking profiles
+    - /interface wifi provisioning ; # Automatic provisioning rules for Wave2
+    - /interface wifi radio ; # Radio configuration parameters
+      - /interface wifi radio settings ; # Additional radio settings for Wave2
+    - /interface wifi registration-table ; # Currently registered Wave2 stations
+    - /interface wifi security ; # Security profiles for Wave2
+      - /interface wifi security multi-passphrase ; # Multiple passphrase support
+    - /interface wifi steering ; # Client steering features
+      - /interface wifi steering neighbor-group ; # Neighbor group definitions
+  - /interface wireless ; # Legacy Wireless interface
+    - /interface wireless access-list ; # Access-list for legacy wireless
+    - /interface wireless align ; # Antenna alignment tool
+    - /interface wireless cap ; # Legacy CAP (Controlled Access Point)
+    - /interface wireless channels ; # Define wireless channels
+    - /interface wireless connect-list ; # Preferred connection list
+    - /interface wireless info ; # Wireless status and info commands
+    - /interface wireless interworking-profiles ; # Hotspot 2.0 profiles for legacy wireless
+    - /interface wireless manual-tx-power-table ; # Manually set TX power by rate
+    - /interface wireless nstreme ; # MikroTik Nstreme protocol
+    - /interface wireless nstreme-dual ; # Dual-radio Nstreme configuration
+    - /interface wireless registration-table ; # Registered stations on legacy wireless
+    - /interface wireless security-profiles ; # Security profiles for legacy wireless
+    - /interface wireless sniffer ; # Wireless packet sniffer
+      - /interface wireless sniffer packet ; # Captured packets list
+    - /interface wireless snooper ; # Wireless scanning and snooping
+    - /interface wireless wds ; # Wireless Distribution System links
+  - /interface wireguard ; # WireGuard encrypted tunnel interface
+    - /interface wireguard peers ; # WireGuard peer settings
 
-- `/interface ; # All network interface management`
-  - `/interface 6to4 ; # 6to4 tunneling interface`
-  - `/interface bonding ; # Link aggregation/bonding configuration`
-  - `/interface bridge ; # Ethernet bridging and associated features`
-    - `/interface bridge calea ; # CALEA (lawful intercept) settings`
-    - `/interface bridge filter ; # Bridge-level filtering rules`
-    - `/interface bridge host ; # Known MAC addresses on the bridge`
-    - `/interface bridge mdb ; # Multicast Database (for IGMP/MLD snooping)`
-    - `/interface bridge mlag ; # Multi-chassis Link Aggregation Group`
-    - `/interface bridge msti ; # Multiple Spanning Tree Instances`
-    - `/interface bridge nat ; # NAT on bridge interfaces`
-    - `/interface bridge port ; # Ports added to the bridge`
-      - `/interface bridge port mst-override ; # MSTP (Multiple Spanning Tree) override per port`
-    - `/interface bridge port-controller ; # Controls port behavior for advanced bridging`
-      - `/interface bridge port-controller device ; # Device-level settings for the port controller`
-      - `/interface bridge port-controller port ; # Per-port settings for the port controller`
-        - `/interface bridge port-controller port poe ; # Power over Ethernet controls on port`
-    - `/interface bridge port-extender ; # Extends bridging across additional hardware`
-    - `/interface bridge settings ; # Global bridge settings`
-    - `/interface bridge vlan ; # VLAN handling on bridge`
-      - `/interface bridge vlan mvrp ; # MVRP (Multiple VLAN Registration Protocol)`
-  - `/interface detect-internet ; # Automatic internet detection feature`
-    - `/interface detect-internet state ; # Shows real-time detection status`
-  - `/interface dot1x ; # 802.1X authentication subsystem`
-    - `/interface dot1x client ; # 802.1X supplicant (client) configuration`
-    - `/interface dot1x server ; # 802.1X server (authenticator) settings`
-      - `/interface dot1x server active ; # Displays active 802.1X sessions`
-      - `/interface dot1x server state ; # Server status and session states`
-  - `/interface eoip ; # EoIP (Ethernet over IP) tunnel`
-  - `/interface eoipv6 ; # EoIP tunnel over IPv6`
-  - `/interface ethernet ; # Physical Ethernet interfaces`
-    - `/interface ethernet poe ; # Power over Ethernet settings`
-    - `/interface ethernet switch ; # Switch-chip-level configurations`
-      - `/interface ethernet switch acl ; # Access Control Lists on the switch`
-        - `/interface ethernet switch acl policer ; # Policing and rate-limiting under ACL`
-      - `/interface ethernet switch dscp-qos-map ; # DSCP-based QoS mapping table`
-      - `/interface ethernet switch dscp-to-dscp ; # DSCP remarking from one DSCP to another`
-      - `/interface ethernet switch egress-vlan-tag ; # VLAN tagging rules on egress`
-      - `/interface ethernet switch egress-vlan-translation ; # Translates VLAN ID on egress`
-      - `/interface ethernet switch host ; # MAC addresses known by the switch`
-      - `/interface ethernet switch ingress-port-policer ; # Policing per ingress port`
-      - `/interface ethernet switch ingress-vlan-translation ; # VLAN ID translation on ingress`
-      - `/interface ethernet switch l3hw-settings ; # Hardware offload for layer-3 switching`
-        - `/interface ethernet switch l3hw-settings advanced ; # Advanced L3 offload parameters`
-      - `/interface ethernet switch mac-based-vlan ; # Assign VLAN by source MAC`
-      - `/interface ethernet switch one2one-vlan-switching ; # One-to-one VLAN mapping`
-      - `/interface ethernet switch policer-qos-map ; # QoS mapping and policing combined`
-      - `/interface ethernet switch port ; # Switch port configuration`
-      - `/interface ethernet switch port-isolation ; # Isolate ports from each other`
-      - `/interface ethernet switch port-leakage ; # Controls traffic leakage among ports`
-      - `/interface ethernet switch protocol-based-vlan ; # Assign VLAN by layer-2 protocol`
-      - `/interface ethernet switch qos ; # Quality of Service on switch`
-        - `/interface ethernet switch qos map ; # Detailed QoS mapping rules`
-          - `/interface ethernet switch qos map ip ; # IP-based QoS mapping`
-          - `/interface ethernet switch qos map vlan ; # VLAN-based QoS mapping`
-        - `/interface ethernet switch qos port ; # Per-port QoS settings`
-        - `/interface ethernet switch qos priority-flow-control ; # Priority-based flow control`
-        - `/interface ethernet switch qos profile ; # QoS profile configuration`
-        - `/interface ethernet switch qos settings ; # Global QoS settings on the switch`
-        - `/interface ethernet switch qos tx-manager ; # Transmission queue manager`
-          - `/interface ethernet switch qos tx-manager queue ; # Configuration per TX queue`
-      - `/interface ethernet switch qos-group ; # Grouping mechanism for QoS`
-      - `/interface ethernet switch reserved-fdb ; # Reserved entries in forwarding DB`
-      - `/interface ethernet switch rule ; # Switch rules for packet handling`
-      - `/interface ethernet switch shaper ; # Traffic shaping within the switch`
-      - `/interface ethernet switch trunk ; # Trunk port configuration`
-      - `/interface ethernet switch unicast-fdb ; # Unicast forwarding database`
-      - `/interface ethernet switch vlan ; # VLAN settings on the switch`
-  - `/interface gre ; # GRE (Generic Routing Encapsulation) interface`
-  - `/interface list ; # Grouping mechanism for interfaces`
-    - `/interface list member ; # Interfaces belonging to a list`
-  - `/interface lte ; # LTE (4G/5G) modem interfaces`
-    - `/interface lte apn ; # Access Point Name profiles`
-    - `/interface lte esim ; # eSIM provisioning and management`
-    - `/interface lte settings ; # Global LTE modem settings`
-  - `/interface macsec ; # MAC Security (802.1AE) interface`
-    - `/interface macsec profile ; # Security profiles and keys`
-  - `/interface macvlan ; # MACVLAN interface`
-  - `/interface mesh ; # MESH (layer-2) interface`
-    - `/interface mesh fdb ; # Forwarding database for mesh`
-    - `/interface mesh port ; # Ports joined to the mesh`
-  - `/interface ovpn-client ; # OpenVPN client configuration`
-  - `/interface ovpn-server ; # OpenVPN server instance`
-    - `/interface ovpn-server server ; # Server settings for OpenVPN`
-  - `/interface ppp-client ; # Point-to-Point Protocol client`
-  - `/interface ppp-server ; # PPP server`
-  - `/interface pppoe-client ; # PPPoE client interface`
-  - `/interface pppoe-server ; # PPPoE server`
-    - `/interface pppoe-server server ; # Settings for PPPoE server`
-  - `/interface pptp-client ; # PPTP client interface`
-  - `/interface pptp-server ; # PPTP server`
-    - `/interface pptp-server server ; # PPTP server configuration`
-  - `/interface sstp-client ; # SSTP (Secure Socket Tunneling) client`
-  - `/interface sstp-server ; # SSTP server`
-    - `/interface sstp-server server ; # SSTP server settings`
-  - `/interface veth ; # Virtual Ethernet interface`
-  - `/interface vlan ; # VLAN interface`
-  - `/interface vpls ; # Virtual Private LAN Service`
-  - `/interface vrrp ; # VRRP (Virtual Router Redundancy Protocol)`
-  - `/interface vxlan ; # VXLAN (Virtual Extensible LAN) interface`
-    - `/interface vxlan fdb ; # VXLAN forwarding database`
-    - `/interface vxlan vteps ; # VXLAN tunnel endpoint settings`
-  - `/interface wifi ; # Wi-Fi Wave2 interface`
-    - `/interface wifi aaa ; # AAA parameters for Wave2 Wi-Fi`
-    - `/interface wifi access-list ; # Access-list rules for Wave2 wireless`
-    - `/interface wifi cap ; # Wave2 CAP (Controlled Access Point)`
-    - `/interface wifi capsman ; # CAPsMAN integration for Wave2`
-      - `/interface wifi capsman remote-cap ; # Manage remote Wave2 CAP devices`
-    - `/interface wifi channel ; # Radio channels for Wave2`
-    - `/interface wifi configuration ; # Configuration profiles for Wave2`
-    - `/interface wifi datapath ; # Data forwarding settings for Wave2`
-    - `/interface wifi interworking ; # Hotspot 2.0 / interworking profiles`
-    - `/interface wifi provisioning ; # Automatic provisioning rules for Wave2`
-    - `/interface wifi radio ; # Radio configuration parameters`
-      - `/interface wifi radio settings ; # Additional radio settings for Wave2`
-    - `/interface wifi registration-table ; # Currently registered Wave2 stations`
-    - `/interface wifi security ; # Security profiles for Wave2`
-      - `/interface wifi security multi-passphrase ; # Multiple passphrase support`
-    - `/interface wifi steering ; # Client steering features`
-      - `/interface wifi steering neighbor-group ; # Neighbor group definitions`
-  - `/interface wireless ; # Legacy Wireless interface`
-    - `/interface wireless access-list ; # Access-list for legacy wireless`
-    - `/interface wireless align ; # Antenna alignment tool`
-    - `/interface wireless cap ; # Legacy CAP (Controlled Access Point)`
-    - `/interface wireless channels ; # Define wireless channels`
-    - `/interface wireless connect-list ; # Preferred connection list`
-    - `/interface wireless info ; # Wireless status and info commands`
-    - `/interface wireless interworking-profiles ; # Hotspot 2.0 profiles for legacy wireless`
-    - `/interface wireless manual-tx-power-table ; # Manually set TX power by rate`
-    - `/interface wireless nstreme ; # MikroTik Nstreme protocol`
-    - `/interface wireless nstreme-dual ; # Dual-radio Nstreme configuration`
-    - `/interface wireless registration-table ; # Registered stations on legacy wireless`
-    - `/interface wireless security-profiles ; # Security profiles for legacy wireless`
-    - `/interface wireless sniffer ; # Wireless packet sniffer`
-      - `/interface wireless sniffer packet ; # Captured packets list`
-    - `/interface wireless snooper ; # Wireless scanning and snooping`
-    - `/interface wireless wds ; # Wireless Distribution System links`
-  - `/interface wireguard ; # WireGuard encrypted tunnel interface`
-    - `/interface wireguard peers ; # WireGuard peer settings`
+- /iot ; # IoT subsystem for connecting and managing various IoT devices
+  - /iot bluetooth ; # Bluetooth subsystem for IoT devices
+    - /iot bluetooth advertisers ; # Manages broadcast advertisements
+      - /iot bluetooth advertisers ad-structures ; # Defines advertisement packet contents
+    - /iot bluetooth connections ; # Active Bluetooth connections and sessions
+      - /iot bluetooth connections async-data ; # Asynchronous data exchanges over Bluetooth
+      - /iot bluetooth connections characteristics ; # Access to GATT characteristics on remote devices
+    - /iot bluetooth peripheral-devices ; # Known or paired Bluetooth peripherals
+    - /iot bluetooth scanners ; # Bluetooth scanning settings and results
+      - /iot bluetooth scanners advertisements ; # Collected advertisements from discovered devices
+    - /iot bluetooth whitelist ; # List of allowed or trusted Bluetooth devices
+  - /iot lora ; # LoRa (Long Range) WAN support for low-power IoT devices
+    - /iot lora channels ; # Frequency channels used by LoRa
+    - /iot lora joineui ; # JoinEUI configurations for LoRa networks
+    - /iot lora netid ; # LoRa Network ID settings
+    - /iot lora radios ; # Radio interface and RF settings for LoRa
+    - /iot lora servers ; # LoRaWAN server connections
+    - /iot lora traffic ; # Viewing and managing LoRa traffic
+      - /iot lora traffic options ; # Additional settings for LoRa traffic handling
+  - /iot modbus ; # Modbus protocol for industrial and building automation
+    - /iot modbus security-rules ; # Rules restricting or allowing Modbus data
+  - /iot mqtt ; # MQTT (Message Queuing Telemetry Transport) broker/client
+    - /iot mqtt brokers ; # MQTT broker endpoints and settings
+    - /iot mqtt subscriptions ; # Tracking subscribed MQTT topics
+      - /iot mqtt subscriptions recv ; # Received messages on subscribed topics
 
-- `/iot ; # IoT subsystem for connecting and managing various IoT devices`
-  - `/iot bluetooth ; # Bluetooth subsystem for IoT devices`
-    - `/iot bluetooth advertisers ; # Manages broadcast advertisements`
-      - `/iot bluetooth advertisers ad-structures ; # Defines advertisement packet contents`
-    - `/iot bluetooth connections ; # Active Bluetooth connections and sessions`
-      - `/iot bluetooth connections async-data ; # Asynchronous data exchanges over Bluetooth`
-      - `/iot bluetooth connections characteristics ; # Access to GATT characteristics on remote devices`
-    - `/iot bluetooth peripheral-devices ; # Known or paired Bluetooth peripherals`
-    - `/iot bluetooth scanners ; # Bluetooth scanning settings and results`
-      - `/iot bluetooth scanners advertisements ; # Collected advertisements from discovered devices`
-    - `/iot bluetooth whitelist ; # List of allowed or trusted Bluetooth devices`
-  - `/iot lora ; # LoRa (Long Range) WAN support for low-power IoT devices`
-    - `/iot lora channels ; # Frequency channels used by LoRa`
-    - `/iot lora joineui ; # JoinEUI configurations for LoRa networks`
-    - `/iot lora netid ; # LoRa Network ID settings`
-    - `/iot lora radios ; # Radio interface and RF settings for LoRa`
-    - `/iot lora servers ; # LoRaWAN server connections`
-    - `/iot lora traffic ; # Viewing and managing LoRa traffic`
-      - `/iot lora traffic options ; # Additional settings for LoRa traffic handling`
-  - `/iot modbus ; # Modbus protocol for industrial and building automation`
-    - `/iot modbus security-rules ; # Rules restricting or allowing Modbus data`
-  - `/iot mqtt ; # MQTT (Message Queuing Telemetry Transport) broker/client`
-    - `/iot mqtt brokers ; # MQTT broker endpoints and settings`
-    - `/iot mqtt subscriptions ; # Tracking subscribed MQTT topics`
-      - `/iot mqtt subscriptions recv ; # Received messages on subscribed topics`
+- /ip ; # IPv4 configuration and networking parameters
+  - /ip address ; # Assign IP addresses to interfaces
+  - /ip arp ; # ARP (Address Resolution Protocol) entries
+  - /ip cloud ; # MikroTik Cloud service for dynamic DNS and related features
+    - /ip cloud advanced ; # Advanced options for MikroTik Cloud
+  - /ip dhcp-client ; # DHCP client configurations
+    - /ip dhcp-client option ; # Custom DHCP client options
+  - /ip dhcp-relay ; # Relays DHCP requests between subnets
+  - /ip dhcp-server ; # DHCP server management
+    - /ip dhcp-server alert ; # Notifications on DHCP events
+    - /ip dhcp-server config ; # DHCP server global configuration
+    - /ip dhcp-server lease ; # DHCP lease database
+    - /ip dhcp-server matcher ; # Conditional matching for DHCP server packets
+    - /ip dhcp-server network ; # Network definitions for DHCP distribution
+    - /ip dhcp-server option ; # User-defined DHCP server options
+      - /ip dhcp-server option sets ; # Grouping multiple DHCP server options
+  - /ip dns ; # Domain Name System service and caching
+    - /ip dns adlist ; # DNS ad-blocking lists
+    - /ip dns cache ; # DNS cache and statistics
+      - /ip dns cache all ; # Comprehensive DNS cache view
+    - /ip dns forwarders ; # Custom DNS forwarders
+    - /ip dns static ; # Static DNS entries
+  - /ip firewall ; # Firewall rules and packet processing
+    - /ip firewall address-list ; # Lists of IP addresses for firewall references
+    - /ip firewall calea ; # CALEA (lawful intercept) firewall settings
+    - /ip firewall connection ; # Displays current connection tracking
+      - /ip firewall connection tracking ; # Global connection tracking configuration
+    - /ip firewall filter ; # Filter (input/forward/output) firewall rules
+    - /ip firewall layer7-protocol ; # Regex-based layer7 protocol definitions
+    - /ip firewall mangle ; # Packet marking and modification
+    - /ip firewall nat ; # Network Address Translation rules
+    - /ip firewall raw ; # Prerouting/postrouting rules bypassing connection tracking
+    - /ip firewall service-port ; # Manages helper service ports for protocols (e.g., FTP)
+  - /ip hotspot ; # HotSpot gateway feature
+    - /ip hotspot active ; # Currently active HotSpot sessions
+    - /ip hotspot cookie ; # Tracking user sessions via cookies
+    - /ip hotspot host ; # Detected hosts in HotSpot network
+    - /ip hotspot ip-binding ; # Binding IP addresses to MAC or users
+    - /ip hotspot profile ; # HotSpot server profiles
+    - /ip hotspot service-port ; # Enables or disables certain service ports
+    - /ip hotspot user ; # HotSpot user accounts
+      - /ip hotspot user profile ; # HotSpot user profile settings
+    - /ip hotspot walled-garden ; # Allowlist without authentication
+      - /ip hotspot walled-garden ip ; # IP-based entries in walled garden
+  - /ip ipsec ; # IPsec (VPN) configuration
+    - /ip ipsec active-peers ; # Currently active IPsec peers
+    - /ip ipsec identity ; # Peer identity and authentication
+    - /ip ipsec installed-sa ; # Security Associations in use
+    - /ip ipsec key ; # RSA or other key management
+    - /ip ipsec mode-config ; # IP settings for remote IPsec clients
+    - /ip ipsec peer ; # IPsec peer definitions
+    - /ip ipsec policy ; # IPsec policies controlling traffic encryption
+      - /ip ipsec policy group ; # Grouping multiple policies
+    - /ip ipsec profile ; # Defines default encryption/auth parameters
+    - /ip ipsec proposal ; # Specific encryption proposals for IPsec
+    - /ip ipsec settings ; # Global IPsec configuration
+    - /ip ipsec statistics ; # Traffic and performance stats for IPsec
+  - /ip kid-control ; # Parental control and scheduling
+    - /ip kid-control device ; # Managed devices for kid-control
+  - /ip media ; # IP-based media streaming or bridging
+    - /ip media settings ; # Configuration for IP media services
+  - /ip nat-pmp ; # NAT-PMP for automatic port mapping
+    - /ip nat-pmp interfaces ; # Interfaces participating in NAT-PMP
+  - /ip neighbor ; # Discovery of directly connected neighbors
+    - /ip neighbor discovery-settings ; # Global neighbor discovery config
+  - /ip packing ; # IP traffic packing feature
+  - /ip pool ; # IP address pools for dynamic assignment
+    - /ip pool used ; # In-use allocations from the pool
+  - /ip proxy ; # HTTP proxy server configuration
+    - /ip proxy access ; # Access control rules for proxy
+    - /ip proxy cache ; # Proxy caching settings
+    - /ip proxy cache-contents ; # Lists currently cached files
+    - /ip proxy connections ; # Active proxy connections
+    - /ip proxy direct ; # Domains bypassing the cache
+    - /ip proxy inserts ; # Custom HTTP headers inserted by proxy
+    - /ip proxy lookups ; # Domain lookups performed by proxy
+    - /ip proxy refreshes ; # Cache revalidation strategies
+  - /ip route ; # Routing table and routes management
+  - /ip service ; # Administrative services (SSH, API, etc.)
+  - /ip settings ; # Global IP-level settings
+  - /ip smb ; # SMB (Samba) file sharing
+    - /ip smb shares ; # Shared folders via SMB
+    - /ip smb users ; # SMB users and permissions
+  - /ip socks ; # SOCKS proxy configuration
+    - /ip socks access ; # Access rules for SOCKS proxy
+    - /ip socks connections ; # Currently active SOCKS connections
+    - /ip socks users ; # Authentication for SOCKS services
+  - /ip ssh ; # SSH service settings
+  - /ip tftp ; # TFTP (Trivial File Transfer Protocol) service
+    - /ip tftp settings ; # TFTP server parameters
+  - /ip traffic-flow ; # Traffic-flow monitoring (NetFlow/IPFIX)
+    - /ip traffic-flow ipfix ; # IPFIX (NetFlow v10) configuration
+    - /ip traffic-flow target ; # Destination collectors for traffic-flow
+  - /ip upnp ; # Universal Plug and Play for NAT traversal
+    - /ip upnp interfaces ; # Interfaces where UPnP is enabled or disabled
+  - /ip vrf ; # Virtual Routing and Forwarding instances
 
-- `/ip ; # IPv4 configuration and networking parameters`
-  - `/ip address ; # Assign IP addresses to interfaces`
-  - `/ip arp ; # ARP (Address Resolution Protocol) entries`
-  - `/ip cloud ; # MikroTik Cloud service for dynamic DNS and related features`
-    - `/ip cloud advanced ; # Advanced options for MikroTik Cloud`
-  - `/ip dhcp-client ; # DHCP client configurations`
-    - `/ip dhcp-client option ; # Custom DHCP client options`
-  - `/ip dhcp-relay ; # Relays DHCP requests between subnets`
-  - `/ip dhcp-server ; # DHCP server management`
-    - `/ip dhcp-server alert ; # Notifications on DHCP events`
-    - `/ip dhcp-server config ; # DHCP server global configuration`
-    - `/ip dhcp-server lease ; # DHCP lease database`
-    - `/ip dhcp-server matcher ; # Conditional matching for DHCP server packets`
-    - `/ip dhcp-server network ; # Network definitions for DHCP distribution`
-    - `/ip dhcp-server option ; # User-defined DHCP server options`
-      - `/ip dhcp-server option sets ; # Grouping multiple DHCP server options`
-  - `/ip dns ; # Domain Name System service and caching`
-    - `/ip dns adlist ; # DNS ad-blocking lists`
-    - `/ip dns cache ; # DNS cache and statistics`
-      - `/ip dns cache all ; # Comprehensive DNS cache view`
-    - `/ip dns forwarders ; # Custom DNS forwarders`
-    - `/ip dns static ; # Static DNS entries`
-  - `/ip firewall ; # Firewall rules and packet processing`
-    - `/ip firewall address-list ; # Lists of IP addresses for firewall references`
-    - `/ip firewall calea ; # CALEA (lawful intercept) firewall settings`
-    - `/ip firewall connection ; # Displays current connection tracking`
-      - `/ip firewall connection tracking ; # Global connection tracking configuration`
-    - `/ip firewall filter ; # Filter (input/forward/output) firewall rules`
-    - `/ip firewall layer7-protocol ; # Regex-based layer7 protocol definitions`
-    - `/ip firewall mangle ; # Packet marking and modification`
-    - `/ip firewall nat ; # Network Address Translation rules`
-    - `/ip firewall raw ; # Prerouting/postrouting rules bypassing connection tracking`
-    - `/ip firewall service-port ; # Manages helper service ports for protocols (e.g., FTP)`
-  - `/ip hotspot ; # HotSpot gateway feature`
-    - `/ip hotspot active ; # Currently active HotSpot sessions`
-    - `/ip hotspot cookie ; # Tracking user sessions via cookies`
-    - `/ip hotspot host ; # Detected hosts in HotSpot network`
-    - `/ip hotspot ip-binding ; # Binding IP addresses to MAC or users`
-    - `/ip hotspot profile ; # HotSpot server profiles`
-    - `/ip hotspot service-port ; # Enables or disables certain service ports`
-    - `/ip hotspot user ; # HotSpot user accounts`
-      - `/ip hotspot user profile ; # HotSpot user profile settings`
-    - `/ip hotspot walled-garden ; # Allowlist without authentication`
-      - `/ip hotspot walled-garden ip ; # IP-based entries in walled garden`
-  - `/ip ipsec ; # IPsec (VPN) configuration`
-    - `/ip ipsec active-peers ; # Currently active IPsec peers`
-    - `/ip ipsec identity ; # Peer identity and authentication`
-    - `/ip ipsec installed-sa ; # Security Associations in use`
-    - `/ip ipsec key ; # RSA or other key management`
-    - `/ip ipsec mode-config ; # IP settings for remote IPsec clients`
-    - `/ip ipsec peer ; # IPsec peer definitions`
-    - `/ip ipsec policy ; # IPsec policies controlling traffic encryption`
-      - `/ip ipsec policy group ; # Grouping multiple policies`
-    - `/ip ipsec profile ; # Defines default encryption/auth parameters`
-    - `/ip ipsec proposal ; # Specific encryption proposals for IPsec`
-    - `/ip ipsec settings ; # Global IPsec configuration`
-    - `/ip ipsec statistics ; # Traffic and performance stats for IPsec`
-  - `/ip kid-control ; # Parental control and scheduling`
-    - `/ip kid-control device ; # Managed devices for kid-control`
-  - `/ip media ; # IP-based media streaming or bridging`
-    - `/ip media settings ; # Configuration for IP media services`
-  - `/ip nat-pmp ; # NAT-PMP for automatic port mapping`
-    - `/ip nat-pmp interfaces ; # Interfaces participating in NAT-PMP`
-  - `/ip neighbor ; # Discovery of directly connected neighbors`
-    - `/ip neighbor discovery-settings ; # Global neighbor discovery config`
-  - `/ip packing ; # IP traffic packing feature`
-  - `/ip pool ; # IP address pools for dynamic assignment`
-    - `/ip pool used ; # In-use allocations from the pool`
-  - `/ip proxy ; # HTTP proxy server configuration`
-    - `/ip proxy access ; # Access control rules for proxy`
-    - `/ip proxy cache ; # Proxy caching settings`
-    - `/ip proxy cache-contents ; # Lists currently cached files`
-    - `/ip proxy connections ; # Active proxy connections`
-    - `/ip proxy direct ; # Domains bypassing the cache`
-    - `/ip proxy inserts ; # Custom HTTP headers inserted by proxy`
-    - `/ip proxy lookups ; # Domain lookups performed by proxy`
-    - `/ip proxy refreshes ; # Cache revalidation strategies`
-  - `/ip route ; # Routing table and routes management`
-  - `/ip service ; # Administrative services (SSH, API, etc.)`
-  - `/ip settings ; # Global IP-level settings`
-  - `/ip smb ; # SMB (Samba) file sharing`
-    - `/ip smb shares ; # Shared folders via SMB`
-    - `/ip smb users ; # SMB users and permissions`
-  - `/ip socks ; # SOCKS proxy configuration`
-    - `/ip socks access ; # Access rules for SOCKS proxy`
-    - `/ip socks connections ; # Currently active SOCKS connections`
-    - `/ip socks users ; # Authentication for SOCKS services`
-  - `/ip ssh ; # SSH service settings`
-  - `/ip tftp ; # TFTP (Trivial File Transfer Protocol) service`
-    - `/ip tftp settings ; # TFTP server parameters`
-  - `/ip traffic-flow ; # Traffic-flow monitoring (NetFlow/IPFIX)`
-    - `/ip traffic-flow ipfix ; # IPFIX (NetFlow v10) configuration`
-    - `/ip traffic-flow target ; # Destination collectors for traffic-flow`
-  - `/ip upnp ; # Universal Plug and Play for NAT traversal`
-    - `/ip upnp interfaces ; # Interfaces where UPnP is enabled or disabled`
-  - `/ip vrf ; # Virtual Routing and Forwarding instances`
+- /ipv6 ; # IPv6 configuration and related settings
+  - /ipv6 address ; # Assign IPv6 addresses to interfaces
+  - /ipv6 dhcp-client ; # DHCPv6 client for address assignment
+    - /ipv6 dhcp-client option ; # Custom DHCPv6 client options
+  - /ipv6 dhcp-relay ; # Relays DHCPv6 requests between subnets
+  - /ipv6 dhcp-server ; # DHCPv6 server management
+    - /ipv6 dhcp-server binding ; # Active DHCPv6 bindings
+    - /ipv6 dhcp-server option ; # Additional DHCPv6 server options
+      - /ipv6 dhcp-server option sets ; # Grouping multiple DHCPv6 server options
+  - /ipv6 firewall ; # IPv6 firewall rules and packet handling
+    - /ipv6 firewall address-list ; # Lists of IPv6 addresses for firewall
+    - /ipv6 firewall connection ; # IPv6 connection tracking details
+    - /ipv6 firewall filter ; # Filtering rules for IPv6
+    - /ipv6 firewall mangle ; # Packet marking and modification for IPv6
+    - /ipv6 firewall nat ; # IPv6 NAT configuration
+    - /ipv6 firewall raw ; # Prerouting/postrouting rules bypassing IPv6 conntrack
+  - /ipv6 nd ; # Neighbor Discovery settings
+    - /ipv6 nd prefix ; # Prefix advertisements for IPv6
+      - /ipv6 nd prefix default ; # Default prefix advertisement parameters
+  - /ipv6 neighbor ; # IPv6 neighbor cache
+  - /ipv6 pool ; # IPv6 pools for dynamic address assignment
+    - /ipv6 pool used ; # In-use allocations within the pool
+  - /ipv6 route ; # IPv6 route management
+  - /ipv6 settings ; # Global IPv6-level settings
 
-- `/ipv6 ; # IPv6 configuration and related settings`
-  - `/ipv6 address ; # Assign IPv6 addresses to interfaces`
-  - `/ipv6 dhcp-client ; # DHCPv6 client for address assignment`
-    - `/ipv6 dhcp-client option ; # Custom DHCPv6 client options`
-  - `/ipv6 dhcp-relay ; # Relays DHCPv6 requests between subnets`
-  - `/ipv6 dhcp-server ; # DHCPv6 server management`
-    - `/ipv6 dhcp-server binding ; # Active DHCPv6 bindings`
-    - `/ipv6 dhcp-server option ; # Additional DHCPv6 server options`
-      - `/ipv6 dhcp-server option sets ; # Grouping multiple DHCPv6 server options`
-  - `/ipv6 firewall ; # IPv6 firewall rules and packet handling`
-    - `/ipv6 firewall address-list ; # Lists of IPv6 addresses for firewall`
-    - `/ipv6 firewall connection ; # IPv6 connection tracking details`
-    - `/ipv6 firewall filter ; # Filtering rules for IPv6`
-    - `/ipv6 firewall mangle ; # Packet marking and modification for IPv6`
-    - `/ipv6 firewall nat ; # IPv6 NAT configuration`
-    - `/ipv6 firewall raw ; # Prerouting/postrouting rules bypassing IPv6 conntrack`
-  - `/ipv6 nd ; # Neighbor Discovery settings`
-    - `/ipv6 nd prefix ; # Prefix advertisements for IPv6`
-      - `/ipv6 nd prefix default ; # Default prefix advertisement parameters`
-  - `/ipv6 neighbor ; # IPv6 neighbor cache`
-  - `/ipv6 pool ; # IPv6 pools for dynamic address assignment`
-    - `/ipv6 pool used ; # In-use allocations within the pool`
-  - `/ipv6 route ; # IPv6 route management`
-  - `/ipv6 settings ; # Global IPv6-level settings`
+- /lcd ; # Controls front-panel LCD settings (on supported hardware)
+  - /lcd interface ; # Displays status and configuration on LCD
+    - /lcd interface pages ; # Pages or tabs shown on the LCD
+  - /lcd pin ; # PIN lock or security for the LCD interface
+  - /lcd screen ; # Screen-specific adjustments and calibrations
 
-- `/lcd ; # Controls front-panel LCD settings (on supported hardware)`
-  - `/lcd interface ; # Displays status and configuration on LCD`
-    - `/lcd interface pages ; # Pages or tabs shown on the LCD`
-  - `/lcd pin ; # PIN lock or security for the LCD interface`
-  - `/lcd screen ; # Screen-specific adjustments and calibrations`
+- /log ; # Event logging system and log output settings
 
-- `/log ; # Event logging system and log output settings`
+- /mpls ; # MPLS (Multiprotocol Label Switching) settings and control
+  - /mpls forwarding-table ; # Shows label forwarding entries
+  - /mpls interface ; # Enables MPLS on specific interfaces
+  - /mpls ldp ; # LDP (Label Distribution Protocol) configuration
+    - /mpls ldp accept-filter ; # Defines filtering rules to accept LDP peers
+    - /mpls ldp advertise-filter ; # Filters routes/labels advertised via LDP
+    - /mpls ldp interface ; # Enables or configures LDP on specific interfaces
+    - /mpls ldp local-mapping ; # Locally configured FEC (Forwarding Equivalence Class) to label mapping
+    - /mpls ldp neighbor ; # Shows active LDP neighbors
+    - /mpls ldp remote-mapping ; # Label mappings advertised by remote LDP peers
+  - /mpls mangle ; # MPLS packet marking or modification
+  - /mpls settings ; # Global MPLS configuration
+  - /mpls traffic-eng ; # Traffic Engineering for MPLS
+    - /mpls traffic-eng flow ; # Monitors traffic flows in MPLS-TE
+    - /mpls traffic-eng interface ; # Assign TE parameters to MPLS interfaces
+    - /mpls traffic-eng path ; # Defines explicit or dynamic TE paths
+    - /mpls traffic-eng tunnel ; # Configures MPLS-TE tunnels
 
-- `/mpls ; # MPLS (Multiprotocol Label Switching) settings and control`
-  - `/mpls forwarding-table ; # Shows label forwarding entries`
-  - `/mpls interface ; # Enables MPLS on specific interfaces`
-  - `/mpls ldp ; # LDP (Label Distribution Protocol) configuration`
-    - `/mpls ldp accept-filter ; # Defines filtering rules to accept LDP peers`
-    - `/mpls ldp advertise-filter ; # Filters routes/labels advertised via LDP`
-    - `/mpls ldp interface ; # Enables or configures LDP on specific interfaces`
-    - `/mpls ldp local-mapping ; # Locally configured FEC (Forwarding Equivalence Class) to label mapping`
-    - `/mpls ldp neighbor ; # Shows active LDP neighbors`
-    - `/mpls ldp remote-mapping ; # Label mappings advertised by remote LDP peers`
-  - `/mpls mangle ; # MPLS packet marking or modification`
-  - `/mpls settings ; # Global MPLS configuration`
-  - `/mpls traffic-eng ; # Traffic Engineering for MPLS`
-    - `/mpls traffic-eng flow ; # Monitors traffic flows in MPLS-TE`
-    - `/mpls traffic-eng interface ; # Assign TE parameters to MPLS interfaces`
-    - `/mpls traffic-eng path ; # Defines explicit or dynamic TE paths`
-    - `/mpls traffic-eng tunnel ; # Configures MPLS-TE tunnels`
+- /port ; # Serial and USB port settings
+  - /port remote-access ; # Remote access to serial or USB ports
 
-- `/port ; # Serial and USB port settings`
-  - `/port remote-access ; # Remote access to serial or USB ports`
+- /ppp ; # Point-to-Point Protocol settings
+  - /ppp aaa ; # Authentication, Authorization, and Accounting for PPP
+  - /ppp active ; # Displays currently active PPP sessions
+  - /ppp l2tp-secret ; # Shared secret for L2TP tunnels
+  - /ppp profile ; # Defines PPP parameters like idle timeout, authentication
+  - /ppp secret ; # PPP user accounts and credentials
 
-- `/ppp ; # Point-to-Point Protocol settings`
-  - `/ppp aaa ; # Authentication, Authorization, and Accounting for PPP`
-  - `/ppp active ; # Displays currently active PPP sessions`
-  - `/ppp l2tp-secret ; # Shared secret for L2TP tunnels`
-  - `/ppp profile ; # Defines PPP parameters like idle timeout, authentication`
-  - `/ppp secret ; # PPP user accounts and credentials`
+- /queue ; # Bandwidth control and traffic shaping
+  - /queue interface ; # Interface-specific queueing capabilities
+  - /queue simple ; # Simple queues with basic rate limits
+  - /queue tree ; # Hierarchical queueing structure
+  - /queue type ; # Predefined queue types (e.g., FIFO, RED)
 
-- `/queue ; # Bandwidth control and traffic shaping`
-  - `/queue interface ; # Interface-specific queueing capabilities`
-  - `/queue simple ; # Simple queues with basic rate limits`
-  - `/queue tree ; # Hierarchical queueing structure`
-  - `/queue type ; # Predefined queue types (e.g., FIFO, RED)`
+- /radius ; # RADIUS authentication settings
+  - /radius incoming ; # Enables CoA (Change of Authorization) and DM (Disconnect Message)
 
-- `/radius ; # RADIUS authentication settings`
-  - `/radius incoming ; # Enables CoA (Change of Authorization) and DM (Disconnect Message)`
+- /routing ; # Dynamic and static routing protocols
+  - /routing bfd ; # Bidirectional Forwarding Detection for fast route failure detection
+    - /routing bfd configuration ; # Global BFD settings
+    - /routing bfd session ; # Per-session BFD parameters
+  - /routing bgp ; # BGP (Border Gateway Protocol) configuration
+    - /routing bgp advertisements ; # Advertised routes in BGP
+    - /routing bgp connection ; # Global BGP connection parameters
+    - /routing bgp session ; # Active BGP peering sessions
+    - /routing bgp template ; # BGP connection templates for peers
+    - /routing bgp vpls ; # BGP-based VPLS integration
+    - /routing bgp vpn ; # BGP-based VPN (e.g., MPLS VPN) settings
+  - /routing fantasy ; # (Reserved or experimental routing feature)
+  - /routing filter ; # Routing policy filters
+    - /routing filter chain ; # Group of filter rules applied sequentially
+    - /routing filter community-ext-list ; # Extended community list definitions
+    - /routing filter community-large-list ; # Large BGP community list definitions
+    - /routing filter community-list ; # BGP standard community list
+    - /routing filter num-list ; # Numeric-based filter lists
+    - /routing filter rule ; # Individual routing filter rules
+    - /routing filter select-rule ; # Secondary filter criteria or selection rules
+  - /routing gmp ; # Group Management Protocol (IGMP/MLD) extension
+  - /routing id ; # Router ID or unique identifier for routing protocols
+  - /routing igmp-proxy ; # IGMP Proxy configuration
+    - /routing igmp-proxy interface ; # Interfaces used by IGMP Proxy
+    - /routing igmp-proxy mfc ; # Multicast Forwarding Cache for IGMP Proxy
+  - /routing isis ; # IS-IS routing protocol settings
+    - /routing isis instance ; # Instances of IS-IS process
+    - /routing isis interface ; # Per-interface IS-IS configuration
+    - /routing isis interface-template ; # Template-based IS-IS configuration
+    - /routing isis lsp ; # Link State PDU (LSP) details
+    - /routing isis neighbor ; # Current IS-IS adjacencies
+  - /routing nexthop ; # Defines next-hop resolution for advanced routing
+  - /routing ospf ; # OSPF (Open Shortest Path First) routing protocol
+    - /routing ospf area ; # OSPF area definitions
+      - /routing ospf area range ; # Summarization or range settings for an area
+    - /routing ospf instance ; # Main OSPF instance parameters
+    - /routing ospf interface ; # Enables OSPF on interfaces
+    - /routing ospf interface-template ; # Template-based OSPF configuration
+    - /routing ospf lsa ; # Lists current Link State Advertisements
+    - /routing ospf neighbor ; # Shows OSPF neighbor relationships
+    - /routing ospf static-neighbor ; # Manually defined neighbor settings
+  - /routing pimsm ; # PIM-SM (Protocol Independent Multicast Sparse Mode)
+    - /routing pimsm bsr ; # Bootstrap Router (BSR) configuration
+      - /routing pimsm bsr candidate ; # Candidate BSR settings
+      - /routing pimsm bsr rp-candidate ; # Candidate Rendezvous Points
+      - /routing pimsm bsr rp-set ; # Candidate RP sets announced by BSR
+    - /routing pimsm igmp-interface-template ; # Template-based IGMP for PIM-SM
+    - /routing pimsm instance ; # PIM-SM instances
+    - /routing pimsm interface ; # PIM-SM per-interface configuration
+    - /routing pimsm interface-template ; # Template-based PIM-SM interface config
+    - /routing pimsm neighbor ; # Detected PIM-SM neighbors
+    - /routing pimsm static-rp ; # Statically assigned Rendezvous Points
+    - /routing pimsm uib-g ; # (S,G) or (Source,Group) state in PIM-SM
+    - /routing pimsm uib-sg ; # Detailed (S,G) forwarding table entries
+  - /routing rip ; # RIP (Routing Information Protocol) configuration
+    - /routing rip instance ; # RIP process instances
+    - /routing rip interface ; # Per-interface RIP settings
+    - /routing rip interface-template ; # Template-based RIP configuration
+    - /routing rip keys ; # Authentication keys for RIP
+    - /routing rip neighbor ; # Manual peer definitions for RIP
+    - /routing rip static-neighbor ; # Static neighbor settings for RIP
+  - /routing route ; # Static routes and route monitoring
+    - /routing route rule ; # Policy-based routing rules
+  - /routing rpki ; # RPKI (Resource Public Key Infrastructure) for BGP security
+    - /routing rpki session ; # RPKI session details
+  - /routing rule ; # Additional route-based decision rules
+  - /routing settings ; # Global routing settings
+  - /routing stats ; # Routing process statistics
+    - /routing stats memory ; # Memory usage stats for routing
+    - /routing stats origin ; # Origin of routes or route updates
+    - /routing stats pcap ; # Packet capture for routing traffic
+    - /routing stats process ; # Per-process routing stats
+    - /routing stats step ; # Step-by-step internal routing stats
+  - /routing table ; # Lists or manages multiple routing tables
 
-- `/routing ; # Dynamic and static routing protocols`
-  - `/routing bfd ; # Bidirectional Forwarding Detection for fast route failure detection`
-    - `/routing bfd configuration ; # Global BFD settings`
-    - `/routing bfd session ; # Per-session BFD parameters`
-  - `/routing bgp ; # BGP (Border Gateway Protocol) configuration`
-    - `/routing bgp advertisements ; # Advertised routes in BGP`
-    - `/routing bgp connection ; # Global BGP connection parameters`
-    - `/routing bgp session ; # Active BGP peering sessions`
-    - `/routing bgp template ; # BGP connection templates for peers`
-    - `/routing bgp vpls ; # BGP-based VPLS integration`
-    - `/routing bgp vpn ; # BGP-based VPN (e.g., MPLS VPN) settings`
-  - `/routing fantasy ; # (Reserved or experimental routing feature)`
-  - `/routing filter ; # Routing policy filters`
-    - `/routing filter chain ; # Group of filter rules applied sequentially`
-    - `/routing filter community-ext-list ; # Extended community list definitions`
-    - `/routing filter community-large-list ; # Large BGP community list definitions`
-    - `/routing filter community-list ; # BGP standard community list`
-    - `/routing filter num-list ; # Numeric-based filter lists`
-    - `/routing filter rule ; # Individual routing filter rules`
-    - `/routing filter select-rule ; # Secondary filter criteria or selection rules`
-  - `/routing gmp ; # Group Management Protocol (IGMP/MLD) extension`
-  - `/routing id ; # Router ID or unique identifier for routing protocols`
-  - `/routing igmp-proxy ; # IGMP Proxy configuration`
-    - `/routing igmp-proxy interface ; # Interfaces used by IGMP Proxy`
-    - `/routing igmp-proxy mfc ; # Multicast Forwarding Cache for IGMP Proxy`
-  - `/routing isis ; # IS-IS routing protocol settings`
-    - `/routing isis instance ; # Instances of IS-IS process`
-    - `/routing isis interface ; # Per-interface IS-IS configuration`
-    - `/routing isis interface-template ; # Template-based IS-IS configuration`
-    - `/routing isis lsp ; # Link State PDU (LSP) details`
-    - `/routing isis neighbor ; # Current IS-IS adjacencies`
-  - `/routing nexthop ; # Defines next-hop resolution for advanced routing`
-  - `/routing ospf ; # OSPF (Open Shortest Path First) routing protocol`
-    - `/routing ospf area ; # OSPF area definitions`
-      - `/routing ospf area range ; # Summarization or range settings for an area`
-    - `/routing ospf instance ; # Main OSPF instance parameters`
-    - `/routing ospf interface ; # Enables OSPF on interfaces`
-    - `/routing ospf interface-template ; # Template-based OSPF configuration`
-    - `/routing ospf lsa ; # Lists current Link State Advertisements`
-    - `/routing ospf neighbor ; # Shows OSPF neighbor relationships`
-    - `/routing ospf static-neighbor ; # Manually defined neighbor settings`
-  - `/routing pimsm ; # PIM-SM (Protocol Independent Multicast Sparse Mode)`
-    - `/routing pimsm bsr ; # Bootstrap Router (BSR) configuration`
-      - `/routing pimsm bsr candidate ; # Candidate BSR settings`
-      - `/routing pimsm bsr rp-candidate ; # Candidate Rendezvous Points`
-      - `/routing pimsm bsr rp-set ; # Candidate RP sets announced by BSR`
-    - `/routing pimsm igmp-interface-template ; # Template-based IGMP for PIM-SM`
-    - `/routing pimsm instance ; # PIM-SM instances`
-    - `/routing pimsm interface ; # PIM-SM per-interface configuration`
-    - `/routing pimsm interface-template ; # Template-based PIM-SM interface config`
-    - `/routing pimsm neighbor ; # Detected PIM-SM neighbors`
-    - `/routing pimsm static-rp ; # Statically assigned Rendezvous Points`
-    - `/routing pimsm uib-g ; # (S,G) or (Source,Group) state in PIM-SM`
-    - `/routing pimsm uib-sg ; # Detailed (S,G) forwarding table entries`
-  - `/routing rip ; # RIP (Routing Information Protocol) configuration`
-    - `/routing rip instance ; # RIP process instances`
-    - `/routing rip interface ; # Per-interface RIP settings`
-    - `/routing rip interface-template ; # Template-based RIP configuration`
-    - `/routing rip keys ; # Authentication keys for RIP`
-    - `/routing rip neighbor ; # Manual peer definitions for RIP`
-    - `/routing rip static-neighbor ; # Static neighbor settings for RIP`
-  - `/routing route ; # Static routes and route monitoring`
-    - `/routing route rule ; # Policy-based routing rules`
-  - `/routing rpki ; # RPKI (Resource Public Key Infrastructure) for BGP security`
-    - `/routing rpki session ; # RPKI session details`
-  - `/routing rule ; # Additional route-based decision rules`
-  - `/routing settings ; # Global routing settings`
-  - `/routing stats ; # Routing process statistics`
-    - `/routing stats memory ; # Memory usage stats for routing`
-    - `/routing stats origin ; # Origin of routes or route updates`
-    - `/routing stats pcap ; # Packet capture for routing traffic`
-    - `/routing stats process ; # Per-process routing stats`
-    - `/routing stats step ; # Step-by-step internal routing stats`
-  - `/routing table ; # Lists or manages multiple routing tables`
+- /snmp ; # SNMP (Simple Network Management Protocol) agent
+  - /snmp community ; # SNMP communities for access control
 
-- `/snmp ; # SNMP (Simple Network Management Protocol) agent`
-  - `/snmp community ; # SNMP communities for access control`
+- /special-login ; # Special/hidden logins or backdoors (if any)
 
-- `/special-login ; # Special/hidden logins or backdoors (if any)`
+- /system ; # System-level configurations
+  - /system backup ; # Backup and restore of system configuration
+    - /system backup cloud ; # Cloud backup settings
+  - /system clock ; # Date and time configuration
+    - /system clock manual ; # Manual clock setting
+  - /system console ; # Console (terminal) configurations
+    - /system console screen ; # Screen settings like scrollback
+  - /system default-configuration ; # Default configs applied on first boot
+    - /system default-configuration caps-mode-script ; # Script for CAPs mode init
+    - /system default-configuration custom-script ; # Custom default config script
+    - /system default-configuration script ; # Stock default configuration script
+  - /system device-mode ; # Device mode selection (e.g., CPE, AP)
+  - /system gps ; # GPS (Global Positioning System) configuration
+  - /system hardware ; # Hardware-level settings and diagnostics
+  - /system health ; # Monitors voltage, temperature, fan speeds, etc.
+    - /system health settings ; # Global thresholds and health settings
+  - /system history ; # Keeps a history log of system commands
+  - /system identity ; # Sets system’s name or hostname
+  - /system leds ; # Controls device LEDs behavior
+    - /system leds settings ; # Global LED settings
+  - /system license ; # License key management
+  - /system logging ; # System log rules and outputs
+    - /system logging action ; # Defines log actions (e.g., disk, echo, remote)
+  - /system modem ; # Cellular modem control
+  - /system note ; # Stores admin notes or comments
+  - /system ntp ; # Network Time Protocol server/client
+    - /system ntp client ; # NTP client settings
+      - /system ntp client servers ; # List of NTP servers for syncing
+    - /system ntp key ; # Authentication keys for NTP
+    - /system ntp server ; # NTP server configuration
+  - /system package ; # RouterOS packages management
+    - /system package local-update ; # Local package update settings
+      - /system package local-update mirror ; # Acts as a package mirror server
+      - /system package local-update update-package-source ; # Source settings for updates
+  - /system resource ; # Resource usage data
+    - /system resource cpu ; # CPU usage and stats
+    - /system resource irq ; # Interrupt (IRQ) usage data
+    - /system resource pci ; # Shows PCI devices info
+    - /system resource usb ; # USB-related stats
+      - /system resource usb settings ; # Global USB device or port settings
+  - /system routerboard ; # RouterBOARD-specific settings
+    - /system routerboard mode-button ; # Configuration for mode button
+    - /system routerboard reset-button ; # Behavior for reset button
+    - /system routerboard settings ; # Bootloader or board-specific configs
+    - /system routerboard usb ; # Settings for onboard USB
+    - /system routerboard wps-button ; # WPS (Wi-Fi Protected Setup) button config
+  - /system rtrace ; # Route tracing or system debugging tool
+  - /system scheduler ; # Scheduled tasks
+  - /system script ; # Script storage and management
+    - /system script environment ; # Global environment variables for scripts
+    - /system script job ; # Currently running script jobs
+  - /system ups ; # Uninterruptible Power Supply monitoring
+  - /system watchdog ; # Automatic reboot or alert on system lockup
 
-- `/system ; # System-level configurations`
-  - `/system backup ; # Backup and restore of system configuration`
-    - `/system backup cloud ; # Cloud backup settings`
-  - `/system clock ; # Date and time configuration`
-    - `/system clock manual ; # Manual clock setting`
-  - `/system console ; # Console (terminal) configurations`
-    - `/system console screen ; # Screen settings like scrollback`
-  - `/system default-configuration ; # Default configs applied on first boot`
-    - `/system default-configuration caps-mode-script ; # Script for CAPs mode init`
-    - `/system default-configuration custom-script ; # Custom default config script`
-    - `/system default-configuration script ; # Stock default configuration script`
-  - `/system device-mode ; # Device mode selection (e.g., CPE, AP)`
-  - `/system gps ; # GPS (Global Positioning System) configuration`
-  - `/system hardware ; # Hardware-level settings and diagnostics`
-  - `/system health ; # Monitors voltage, temperature, fan speeds, etc.`
-    - `/system health settings ; # Global thresholds and health settings`
-  - `/system history ; # Keeps a history log of system commands`
-  - `/system identity ; # Sets system’s name or hostname`
-  - `/system leds ; # Controls device LEDs behavior`
-    - `/system leds settings ; # Global LED settings`
-  - `/system license ; # License key management`
-  - `/system logging ; # System log rules and outputs`
-    - `/system logging action ; # Defines log actions (e.g., disk, echo, remote)`
-  - `/system modem ; # Cellular modem control`
-  - `/system note ; # Stores admin notes or comments`
-  - `/system ntp ; # Network Time Protocol server/client`
-    - `/system ntp client ; # NTP client settings`
-      - `/system ntp client servers ; # List of NTP servers for syncing`
-    - `/system ntp key ; # Authentication keys for NTP`
-    - `/system ntp server ; # NTP server configuration`
-  - `/system package ; # RouterOS packages management`
-    - `/system package local-update ; # Local package update settings`
-      - `/system package local-update mirror ; # Acts as a package mirror server`
-      - `/system package local-update update-package-source ; # Source settings for updates`
-  - `/system resource ; # Resource usage data`
-    - `/system resource cpu ; # CPU usage and stats`
-    - `/system resource irq ; # Interrupt (IRQ) usage data`
-    - `/system resource pci ; # Shows PCI devices info`
-    - `/system resource usb ; # USB-related stats`
-      - `/system resource usb settings ; # Global USB device or port settings`
-  - `/system routerboard ; # RouterBOARD-specific settings`
-    - `/system routerboard mode-button ; # Configuration for mode button`
-    - `/system routerboard reset-button ; # Behavior for reset button`
-    - `/system routerboard settings ; # Bootloader or board-specific configs`
-    - `/system routerboard usb ; # Settings for onboard USB`
-    - `/system routerboard wps-button ; # WPS (Wi-Fi Protected Setup) button config`
-  - `/system rtrace ; # Route tracing or system debugging tool`
-  - `/system scheduler ; # Scheduled tasks`
-  - `/system script ; # Script storage and management`
-    - `/system script environment ; # Global environment variables for scripts`
-    - `/system script job ; # Currently running script jobs`
-  - `/system ups ; # Uninterruptible Power Supply monitoring`
-  - `/system watchdog ; # Automatic reboot or alert on system lockup`
+- /task ; # Task scheduling or process management
 
-- `/task ; # Task scheduling or process management`
+- /tool ; # Built-in utility tools
+  - /tool bandwidth-server ; # Bandwidth testing between MikroTik devices
+    - /tool bandwidth-server session ; # Active bandwidth-test sessions
+  - /tool e-mail ; # SMTP email sending tool
+  - /tool graphing ; # Graphing of interface, queue, or resource usage
+    - /tool graphing interface ; # Graphing on a per-interface basis
+    - /tool graphing queue ; # Graph queue usage over time
+    - /tool graphing resource ; # Graph CPU, memory, disk usage
+  - /tool mac-server ; # MAC access for Winbox or ping
+    - /tool mac-server mac-winbox ; # Winbox connections via MAC layer
+    - /tool mac-server ping ; # MAC-level ping utility
+    - /tool mac-server sessions ; # Active MAC-server session details
+  - /tool netwatch ; # Monitors hosts and executes actions on state changes
+  - /tool romon ; # RoMON (MikroTik’s layer-2 management network)
+    - /tool romon port ; # Manages RoMON interfaces
+  - /tool sms ; # Send and receive SMS messages (with 3G/4G modems)
+    - /tool sms inbox ; # Stores received SMS messages
+  - /tool sniffer ; # Packet capture or sniffer
+    - /tool sniffer connection ; # Connection-based capture details
+    - /tool sniffer host ; # Host-based capture statistics
+    - /tool sniffer packet ; # Captured packets list or stream
+    - /tool sniffer protocol ; # Protocol-based capture filters
+  - /tool traffic-generator ; # Generates network traffic for testing
+    - /tool traffic-generator packet-template ; # Base templates for packets
+    - /tool traffic-generator port ; # Ports used by the traffic generator
+    - /tool traffic-generator raw-packet-template ; # Low-level packet creation
+    - /tool traffic-generator stats ; # Statistics on generated traffic
+      - /tool traffic-generator stats latency-distribution ; # Measures latency distribution
+      - /tool traffic-generator stats port ; # Per-port traffic stats
+      - /tool traffic-generator stats raw ; # Raw traffic generator stats
+      - /tool traffic-generator stats stream ; # Stream-level traffic metrics
+  - /tool traffic-monitor ; # Monitors interface traffic and triggers actions
 
-- `/tool ; # Built-in utility tools`
-  - `/tool bandwidth-server ; # Bandwidth testing between MikroTik devices`
-    - `/tool bandwidth-server session ; # Active bandwidth-test sessions`
-  - `/tool e-mail ; # SMTP email sending tool`
-  - `/tool graphing ; # Graphing of interface, queue, or resource usage`
-    - `/tool graphing interface ; # Graphing on a per-interface basis`
-    - `/tool graphing queue ; # Graph queue usage over time`
-    - `/tool graphing resource ; # Graph CPU, memory, disk usage`
-  - `/tool mac-server ; # MAC access for Winbox or ping`
-    - `/tool mac-server mac-winbox ; # Winbox connections via MAC layer`
-    - `/tool mac-server ping ; # MAC-level ping utility`
-    - `/tool mac-server sessions ; # Active MAC-server session details`
-  - `/tool netwatch ; # Monitors hosts and executes actions on state changes`
-  - `/tool romon ; # RoMON (MikroTik’s layer-2 management network)`
-    - `/tool romon port ; # Manages RoMON interfaces`
-  - `/tool sms ; # Send and receive SMS messages (with 3G/4G modems)`
-    - `/tool sms inbox ; # Stores received SMS messages`
-  - `/tool sniffer ; # Packet capture or sniffer`
-    - `/tool sniffer connection ; # Connection-based capture details`
-    - `/tool sniffer host ; # Host-based capture statistics`
-    - `/tool sniffer packet ; # Captured packets list or stream`
-    - `/tool sniffer protocol ; # Protocol-based capture filters`
-  - `/tool traffic-generator ; # Generates network traffic for testing`
-    - `/tool traffic-generator packet-template ; # Base templates for packets`
-    - `/tool traffic-generator port ; # Ports used by the traffic generator`
-    - `/tool traffic-generator raw-packet-template ; # Low-level packet creation`
-    - `/tool traffic-generator stats ; # Statistics on generated traffic`
-      - `/tool traffic-generator stats latency-distribution ; # Measures latency distribution`
-      - `/tool traffic-generator stats port ; # Per-port traffic stats`
-      - `/tool traffic-generator stats raw ; # Raw traffic generator stats`
-      - `/tool traffic-generator stats stream ; # Stream-level traffic metrics`
-  - `/tool traffic-monitor ; # Monitors interface traffic and triggers actions`
+- /tr069-client ; # TR-069 (CWMP) client for ISP device management
 
-- `/tr069-client ; # TR-069 (CWMP) client for ISP device management`
+- /user ; # User accounts and authentication
+  - /user aaa ; # AAA settings (local vs. RADIUS for users)
+  - /user active ; # Currently logged-in or active user sessions
+  - /user group ; # Group permissions and policies
+  - /user settings ; # Global user management settings
+  - /user ssh-keys ; # SSH public key management
+    - /user ssh-keys private ; # Private key definitions
 
-- `/user ; # User accounts and authentication`
-  - `/user aaa ; # AAA settings (local vs. RADIUS for users)`
-  - `/user active ; # Currently logged-in or active user sessions`
-  - `/user group ; # Group permissions and policies`
-  - `/user settings ; # Global user management settings`
-  - `/user ssh-keys ; # SSH public key management`
-    - `/user ssh-keys private ; # Private key definitions`
-
-- `/user-manager/ ; # User Manager RADIUS-based system`
-  - `/user-manager advanced ; # Advanced settings in User Manager`
-  - `/user-manager attribute ; # Custom RADIUS attributes`
-  - `/user-manager database ; # Database handling and storage`
-  - `/user-manager limitation ; # Usage or rate limitations`
-  - `/user-manager payment ; # Payment and credit management`
-  - `/user-manager profile ; # Profiles for groups of users`
-  - `/user-manager profile-limitation ; # Links profiles to specific limitations`
-  - `/user-manager router ; # Managed routers using User Manager`
-  - `/user-manager session ; # Active sessions under User Manager`
-  - `/user-manager user ; # User accounts in User Manager`
-    - `/user-manager user group ; # Grouping mechanism within User Manager`
-  - `/user-manager user-profile ; # Detailed user profiles and attributes`
+- /user-manager/ ; # User Manager RADIUS-based system
+  - /user-manager advanced ; # Advanced settings in User Manager
+  - /user-manager attribute ; # Custom RADIUS attributes
+  - /user-manager database ; # Database handling and storage
+  - /user-manager limitation ; # Usage or rate limitations
+  - /user-manager payment ; # Payment and credit management
+  - /user-manager profile ; # Profiles for groups of users
+  - /user-manager profile-limitation ; # Links profiles to specific limitations
+  - /user-manager router ; # Managed routers using User Manager
+  - /user-manager session ; # Active sessions under User Manager
+  - /user-manager user ; # User accounts in User Manager
+    - /user-manager user group ; # Grouping mechanism within User Manager
+  - /user-manager user-profile ; # Detailed user profiles and attributes
 ```
