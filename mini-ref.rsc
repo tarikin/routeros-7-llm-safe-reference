@@ -43,9 +43,12 @@
 :for i from=1 to=3 do={ :put $i };
 
 # STRING ESCAPING
-# Use backslashes to escape special chars like quotes, backslash, newline, etc.
-:local escExample "Line1\nLine2 with \"quotes\" and a backslash\\";
+# Use backslashes to escape special chars
+:local escExample "Line1\nLine2 with \"quotes\", backslash\\, tab\t, and carriageReturn\r";
 :put $escExample;
+
+# HEX ESCAPES (UTF-8 / EMOJI, ETC.)
+:local hexStr "Some text \F0\9F\XX\YY more text"; :put $hexStr;
 
 # PRINT & WHERE
 /ip route print where gateway=1.1.1.1;
