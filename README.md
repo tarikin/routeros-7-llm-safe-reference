@@ -76,6 +76,19 @@ strictly following the snippet’s approach, no extra commands or guesswork.
 
 **Result**: The LLM delivers a meticulously accurate script, leveraging the snippet’s array, JSON, and beep logic.  
 
+## Explore Advanced Prompt Library
+For real-world RouterOS 7 automation tasks with LLM assistance, check out our
+[**Prompt Library**](ADVANCED-PROMPTS-EXAMPLES.md) where we feature examples of complex scenarios. Each prompt references
+the **full** `mini-ref.rsc` script, ensuring maximum alignment with official syntax and best practices.
+
+> # Hints for validating RouterOS syntax
+> 
+> 1) Open your RouterOS terminal (Winbox or SSH).  
+> 2) Run: `/system script add name=MyScriptName`  
+> 3) Then: `/system script edit MyScriptName value-name=source`  
+> 4) Paste your script in the built-in editor. It will highlight any syntax errors.  
+   (Note: This does not guarantee runtime correctness—only syntax validation.)
+
 ## Contributing
 
 We welcome new commands or formatting tweaks that help keep the snippet concise yet comprehensive. Submit a PR, and we’ll test your additions with ChatGPT or Claude for syntactic accuracy.

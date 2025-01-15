@@ -42,6 +42,11 @@
 :put [:timestamp]; ; # e.g. 2735w21:41:43.123456789
 :for i from=1 to=3 do={ :put $i };
 
+# STRING ESCAPING
+# Use backslashes to escape special chars like quotes, backslash, newline, etc.
+:local escExample "Line1\nLine2 with \"quotes\" and a backslash\\";
+:put $escExample;
+
 # PRINT & WHERE
 /ip route print where gateway=1.1.1.1;
 :put [/system script print as-value];
