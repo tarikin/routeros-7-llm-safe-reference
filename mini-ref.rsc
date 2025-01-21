@@ -13,6 +13,12 @@
   && $b=false) do={ :put "combo" };
 # End lines with semicolons or a newline. 
 
+# PATH & SUBPATH
+# / => root. "/ip" ~ "/ ip" ~ "/ip/" => same path. A trailing slash or space is ignored if no next token.
+/ip or /ip address => subpaths. A mid-path slash with no valid token => error ("/ip /" => bad).
+# Commands follow final subpath: "/ip address add" or "/ip/address add". 
+# Trailing slash after command => error ("/ip address add/" => bad).
+
 # ARRAYS & DICT
 :global arr [];
 :set ($arr->0) {"ip"="1.1.1.1";"desc"="DNS"};

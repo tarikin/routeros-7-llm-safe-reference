@@ -563,6 +563,7 @@
       - /tool traffic-generator stats port ; # Per-port traffic stats
       - /tool traffic-generator stats raw ; # Raw traffic generator stats
       - /tool traffic-generator stats stream ; # Stream-level traffic metrics
+    - /tool traffic-generator stream ; #
   - /tool traffic-monitor ; # Monitors interface traffic and triggers actions
 
 - /tr069-client ; # TR-069 (CWMP) client for ISP device management
