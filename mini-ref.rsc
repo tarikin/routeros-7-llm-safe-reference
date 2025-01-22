@@ -14,9 +14,10 @@
 # End lines with semicolons or a newline. 
 
 # PATH & SUBPATH
-# / => root. "/ip" ~ "/ ip" ~ "/ip/" => same path. A trailing slash or space is ignored if no next token.
-/ip or /ip address => subpaths. A mid-path slash with no valid token => error ("/ip /" => bad).
-# Commands follow final subpath: "/ip address add" or "/ip/address add". 
+# / => root.  Whitespace+slash combos collapse to tokens.  E.g. "/ip/address" 
+# ~ "/ip address" ~ "/ip address/" ~ "/    ip/   address/" => same path tokens ("ip" > "address").
+# A mid-path slash with no token => error ("/ip /" => invalid).
+# Commands come after final subpath: "/ip address add" or "/ip/address add" => same command.
 # Trailing slash after command => error ("/ip address add/" => bad).
 
 # ARRAYS & DICT
