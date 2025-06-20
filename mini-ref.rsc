@@ -6,11 +6,30 @@
 # BASICS & LINE STRUCTURE
 :global gVar; :set gVar 123;
 :local lVar "abc";
-:put [:typeof $gVar]; ; # => num,str,array,nil
-:if (condition) do={ :put "true" } else={ :put "false" };
+# Data Types and their :typeof return values
+# Core: num (numbers), str (strings), bool, array, nil (nothing)
+# Network: ip, ip6, ip-prefix, ip6-prefix
+# Note: MAC addresses are typed as str
+# Functions return 'code' type
+:put ([:typeof $gVar]); ; # => num,str,bool,array,nil,ip,ip6,ip-prefix,ip6-prefix,code
+:if (condition) do={ :put ("true") } else={ :put ("false") };
+
+# Code blocks use curly braces and require semicolons
+{
+    :local x 1;
+    :put ("x = " . $x);  # String concatenation with . operator
+}
+
 # Line joining example:
 :if ($a=true \
-  && $b=false) do={ :put "combo" };
+  && $b=false) do={ 
+    :put ("combo");  # Semicolon required inside code blocks
+};
+
+# String concatenation requires parentheses
+:put ("Hello " . "world");  # Correct
+:put "Hello " . "world";    # Will cause error
+
 # End lines with semicolons or a newline. 
 
 # PATH & SUBPATH
