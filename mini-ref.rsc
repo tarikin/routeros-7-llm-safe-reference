@@ -14,11 +14,11 @@
 # End lines with semicolons or a newline. 
 
 # PATH & SUBPATH
-# / => root.  Whitespace+slash combos collapse to tokens.  E.g. "/ip/address" 
-# ~ "/ip address" ~ "/ip address/" ~ "/    ip/   address/" => same path tokens ("ip" > "address").
-# A mid-path slash with no token => error ("/ip /" => invalid).
-# Commands come after final subpath: "/ip address add" or "/ip/address add" => same command.
-# Trailing slash after command => error ("/ip address add/" => bad).
+# "/"=root. Spaces/slashes merge => tokens. E.g. "/ip address" ~ "/ip/address" => ["ip","address"]
+# Double slash => empty token => error. Trailing slash w/o next token => error. Slash in cmd-params => error
+# Command after last token: "/ip address add" ~ "/ip/address/add"
+# exValid: "/ip firewall filter add", "/ip/firewall filter add", "/  ip firewall filter add"
+# exInvalid: "/ip//firewall", "/ip/firewall/filter/add/", "/ip/firewall/ /filter/add"
 
 # ARRAYS & DICT
 :global arr [];
