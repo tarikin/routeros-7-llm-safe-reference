@@ -6,12 +6,24 @@
 # BASICS & LINE STRUCTURE
 :global gVar; :set gVar 123;
 :local lVar "abc";
-# Data Types and their :typeof return values
+# DATA TYPES & CONVERSION
 # Core: num (numbers), str (strings), bool, array, nil (nothing)
 # Network: ip, ip6, ip-prefix, ip6-prefix
 # Note: MAC addresses are typed as str
 # Functions return 'code' type
 :put ([:typeof $gVar]); ; # => num,str,bool,array,nil,ip,ip6,ip-prefix,ip6-prefix,code
+
+# TYPE CONVERSION
+:put ([:tonum "123"]); ; # => 123 (str->num)
+:put ([:tostr 123]); ; # => "123" (num->str)
+:put ([:toip "192.168.1.1"]); ; # => 192.168.1.1 (str->ip)
+:put ([:tobool "yes"]); ; # => true (str->bool)
+:put ([:toarray "a,b,c" delimiter=","]); ; # => {"a";"b";"c"}
+:put ([:pick "abc" 1 2]); ; # => "b" (substring)
+:put ([:find "abc" "b"]); ; # => 1 (position)
+:put ([:len "abc"]); ; # => 3 (length)
+:put ([:timestamp]); ; # => current timestamp
+:put ([:time]); ; # => seconds since epoch
 :if (condition) do={ :put ("true") } else={ :put ("false") };
 
 # Code blocks use curly braces and require semicolons
