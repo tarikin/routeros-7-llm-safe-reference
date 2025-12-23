@@ -503,3 +503,115 @@
 # └─────────────────────────────────────────────────────────────────────────────┘
 # Error message format: "my-message (:error; line 18)"
 # Must parse string to extract original message
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#                    ASYNC ANTI-PATTERNS (from 400+ test verification)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 45. /tool fetch IS BLOCKING! (NOT ASYNC!)                                   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - LLM assumes fetch is async:
+# /tool fetch url="http://example.com/file";  # BLOCKS SCRIPT!
+
+# ✓ CORRECT - Use :execute wrapper for async:
+:local j [:execute "/tool fetch url=\"http://example.com/file\" keep-result=no"];
+# Returns immediately, fetch runs in background
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 46. :execute RETURNS id TYPE, as-string RETURNS str                         │
+# └─────────────────────────────────────────────────────────────────────────────┘
+:local jobId [:execute ":put test"];
+:put [:typeof $jobId];                  # => id (async)
+
+:local output [:execute ":put test" as-string];
+:put [:typeof $output];                 # => str (sync, BLOCKING!)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 47. :execute ERRORS ARE ISOLATED - PARENT CANNOT CATCH!                     │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming parent catches:
+:local caught false;
+:onerror e in={
+  [:execute ":error \"child-error\"" as-string];
+} do={
+  :set caught true;
+};
+# caught = false! Errors are ISOLATED!
+
+# ✓ CORRECT - Use globals or file for status
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 48. :delay DOES NOT SYNC WITH ASYNC JOBS!                                   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming delay waits for job:
+:local j [:execute "long-running-task"];
+:delay 5s;  # Does NOT wait for job completion!
+
+# ✓ CORRECT - Poll for job completion:
+:while ([:len [/system script job find where .id=$j]] > 0) do={
+  :delay 100ms;
+};
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 49. :parse HAS NO CLOSURES!                                                 │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming closure captures outer vars:
+:local outerVar "test";
+:global fn [:parse ":put \$outerVar"];  # outerVar NOT captured!
+
+# ✓ CORRECT - Pass as parameters:
+:global fn [:parse ":put \$1"];
+[$fn "value"];
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 50. :parse RETURNS code TYPE                                                │
+# └─────────────────────────────────────────────────────────────────────────────┘
+:global myFn [:parse ":put \"hello\""];
+:put [:typeof $myFn];                   # => code (not str!)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 51. :timestamp RETURNS time TYPE (NOT num!)                                 │
+# └─────────────────────────────────────────────────────────────────────────────┘
+:local ts [:timestamp];
+:put [:typeof $ts];                     # => time (not num!)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 52. NETWATCH RUNS AS sys USER - LIMITED PERMISSIONS!                        │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming full permissions in netwatch:
+# /tool netwatch on-down="/tool fetch ..."  # FAILS in v7.13+!
+
+# sys user has: read, write, test, reboot
+# sys user LACKS: ftp (required for fetch!)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 53. GLOBALS PERSIST UNTIL REBOOT                                            │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming globals auto-clear:
+:global myVar "value";  # Persists forever!
+
+# ✓ CORRECT - Manually unset:
+:set myVar;  # Clears variable
+
+# View all globals:
+/system script environment print
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 54. ORPHAN JOBS (NO CLEANUP) - RESOURCE LEAK!                               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Not capturing job ID:
+[:execute ":delay 10s"];  # Job ID lost! No way to stop!
+
+# ✓ CORRECT - Always capture and cleanup:
+:local j [:execute ":delay 10s"];
+:do {/system script job remove $j} on-error={};
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 55. /system clock get date RETURNS str TYPE                                 │
+# └─────────────────────────────────────────────────────────────────────────────┘
+:local d [/system clock get date];
+:put [:typeof $d];                      # => str (not time!)
+
+:local t [/system clock get time];
+:put [:typeof $t];                      # => time

@@ -19,13 +19,20 @@
 # │ ip6           │ 2001:db8::1                                               │
 # │ ip-prefix     │ 192.168.0.0/24                                            │
 # │ ip6-prefix    │ 2001:db8::/32                                             │
-# │ time          │ 1h30m, [:timestamp] result                                │
-# │ array         │ {1;2;3}, {"key"="val"}, FUNCTIONS, ID results             │
+# │ time          │ 1h30m, [:timestamp], [/system clock get time]             │
+# │ array         │ {1;2;3}, {"key"="val"}, STANDARD FUNCTIONS                │
+# │ id            │ [:execute] result, internal object IDs                    │
+# │ code          │ [:parse] result                                           │
 # └───────────────┴───────────────────────────────────────────────────────────┘
 
-# RULE 1.2: CRITICAL - Functions return type "array" (NOT "code" or "function")
-:global myFunc do={ :return "test"; };
-:put [:typeof $myFunc];                 # => array (NOT code!)
+# RULE 1.2: Function types - STANDARD vs PARSED
+# Standard function (do={}) returns "array":
+:global stdFunc do={ :return 1; };
+:put [:typeof $stdFunc];                 # => array
+
+# Parsed function ([:parse]) returns "code":
+:global parsedFunc [:parse ":return 1"];
+:put [:typeof $parsedFunc];              # => code
 
 # RULE 1.3: Empty array [] returns type "nil" (NOT "array")
 :put [:typeof []];                      # => nil
@@ -83,6 +90,10 @@
 # RULE 2.8: :tonsec - time to nanoseconds (7.12+)
 :put [:tonsec 1s];                      # => 1000000000
 :put [:tonsec 1m];                      # => 60000000000
+
+# RULE 2.9: :parse hack for specialized types (str -> ip/ip6)
+:put [:typeof [[:parse ":return 1.1.1.1"]]];  # => ip
+:put [:typeof [[:parse ":return 1h"]]];       # => time
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      3. :convert COMMAND (7.12+)                            │
@@ -250,7 +261,7 @@
 # ├──────────────────────────────────────────────────────────────────────────────┤
 # │ ✗ [:tobool "yes"] returns nil, NOT true                                      │
 # │ ✗ [:tonum "23.8"] returns nil (no floats)                                    │
-# │ ✗ [:typeof function] returns "array", NOT "code"                             │
+# │ ✗ [:typeof function] returns "array" (standard) or "code" (parsed)             │
 # │ ✗ [:typeof []] returns "nil", NOT "array"                                    │
 # │ ✗ "abc" < "xyz" is ERROR (string comparison only = and !=)                   │
 # │ ✗ Integer overflow wraps silently to negative                                │
