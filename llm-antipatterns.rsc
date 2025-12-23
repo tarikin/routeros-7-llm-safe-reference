@@ -615,3 +615,112 @@
 
 :local t [/system clock get time];
 :put [:typeof $t];                      # => time
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 56. v7.10+ DATE FORMAT CHANGED FROM MMM/DD/YYYY TO YYYY-MM-DD               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming old format:
+# :local month [:pick [/system clock get date] 0 3];  # BREAKS in v7.10+!
+
+# ✓ CORRECT - Detect format first:
+:local d [/system clock get date];
+:if ([:pick $d 4 5] = "-") do={
+  # v7.10+ format: YYYY-MM-DD
+  :local year [:pick $d 0 4];
+  :local month [:pick $d 5 7];
+} else={
+  # Old format: MMM/DD/YYYY
+  :local month [:pick $d 0 3];
+};
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 57. :tonsec RETURNS NANOSECONDS, NOT SECONDS!                               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming seconds:
+# :local sec [:tonsec 1h];  # Returns 3600000000000, NOT 3600!
+
+# ✓ CORRECT - Divide by 1,000,000,000:
+:local ns [:tonsec 1h];
+:local sec ($ns / 1000000000);  # => 3600
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 58. :timestamp IS NOT UNIX EPOCH SECONDS                                    │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming epoch seconds:
+# :local epochSec [:timestamp];  # Returns "2920w5d07:03:45.ns", NOT number!
+
+# ✓ CORRECT - Convert via :tonsec:
+:local epochSec ([:tonsec [:timestamp]] / 1000000000);
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 59. TIME TYPE EXTENDS BEYOND 24H (DOES NOT WRAP!)                           │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming 24h wrap:
+# 23:00 + 3:00 = 02:00  # WRONG! Actually returns 1d02:00:00
+
+# ✓ ACTUAL BEHAVIOR:
+:put (23:00:00 + 3:00:00);  # => 1d02:00:00 (extends with day prefix!)
+:put (12h + 36h);            # => 2d00:00:00
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 60. CERTIFICATE DATES USE ISO FORMAT (YYYY-MM-DD) IN v7.10+                 │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming cert dates use old legacy format (MMM/DD/YYYY):
+# Cert invalid-after: "dec/25/2025" -> actually "2025-12-25"!
+
+# expires-after = DURATION REMAINING (time type), invalid-after = string (ISO)!
+:local expiresAfter [/certificate get $cert expires-after];  # => 4w1d...
+:local invalidAfter [/certificate get $cert invalid-after];  # => "2025-..."
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 61. scheduler start-time IS STRING (NOT time TYPE!)                         │
+# └─────────────────────────────────────────────────────────────────────────────┘
+:local startTime [/system scheduler get myTask start-time];
+:put [:typeof $startTime];  # => str (NOT time!)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┘
+# │ 62. script last-started IS STRING (NOT time TYPE!)                          │
+# └─────────────────────────────────────────────────────────────────────────────┘
+:local lastStarted [/system script get myScript last-started];
+:put [:typeof $lastStarted];  # => str (format: "YYYY-MM-DD HH:MM:SS")
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 63. gmt-offset IS num (NOT time TYPE!)                                      │
+# └─────────────────────────────────────────────────────────────────────────────┘
+:local offset [/system clock get gmt-offset];
+:put [:typeof $offset];  # => num (seconds offset from UTC)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 64. ADDRESS-LIST TIMEOUT ENTRIES ARE LOST ON REBOOT!                        │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming timeout entries persist:
+/ip firewall address-list add list=blocklist address=1.2.3.4 timeout=1d;
+# This is DYNAMIC (RAM only), LOST on reboot!
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 65. NTP DOES NOT SYNC IMMEDIATELY - CLOCK STARTS AT 1970!                   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Using date immediately after boot:
+# Scheduler scripts may fire with wrong dates before NTP syncs!
+
+# ✓ CORRECT - Wait for NTP sync:
+:local timeout 0;
+:while (([/system/ntp/client/get status] != "synchronized") && $timeout < 30) do={
+  :delay 1s; :set timeout ($timeout + 1);
+};
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 66. /log print as-value DOES NOT SUPPORT count                              │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Using count with as-value:
+# :local logs [/log print as-value count=5];  # FAILS (Syntax Error)
+
+# ✓ CORRECT - Use where to filter, or filtering loop:
+:local logs [/log print as-value where topics~"system"];
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 67. LOG TIME IS str TYPE (ISO FORMAT)                                       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+:local t [/log get $id time];
+:put [:typeof $t];  # => str (e.g. "2025-12-23 07:13:04")
+# Note: It is NOT time type!
