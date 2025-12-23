@@ -7,11 +7,11 @@
 :global gVar; :set gVar 123;
 :local lVar "abc";
 # DATA TYPES & CONVERSION
-# Core: num (numbers), str (strings), bool, array, nil (nothing)
+# Core: num (numbers), str (strings), bool, array, nil (nothing), time
 # Network: ip, ip6, ip-prefix, ip6-prefix
 # Note: MAC addresses are typed as str
 # Functions return 'code' type
-:put ([:typeof $gVar]); ; # => num,str,bool,array,nil,ip,ip6,ip-prefix,ip6-prefix,code
+:put ([:typeof $gVar]); ; # => num,str,bool,array,nil,time,ip,ip-prefix,ip6,ip6-prefix,code
 
 # TYPE CONVERSION
 :put ([:tonum "123"]); ; # => 123 (str->num)
@@ -101,17 +101,17 @@
 :put [:deserialize from=dsv value="a;b;c\n1;2;3" delimiter=";" options=dsv.plain];
 
 # TIME & DATE
-/system clock get date; ; # => e.g. Jan/01/2025
+/system clock get date; ; # => e.g. 2025-12-23 (ISO)
 :local d [/system clock get date];
-:local m [:pick $d 0 3];
-:local day [:pick $d 4 6];
-:local y [:pick $d 7 11];
+:local y [:pick $d 0 4];
+:local m [:pick $d 5 7];
+:local day [:pick $d 8 10];
 
 # LOG & BEEP
 :beep frequency=300 length=500ms;
 /log print as-value where buffer="logParse";
 :global logParseVar "";
-:if ([:find [:tostr $logParseVar] "failure"] != "") do={ :put "login failure" };
+:if ([:find [:tostr $logParseVar] "failure"] != nil) do={ :put "login failure" };
 
 # SCRIPTS & ENV
 /system script run "myScript";
