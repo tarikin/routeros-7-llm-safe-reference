@@ -202,3 +202,84 @@
 :delay 500ms;
 :put "after";
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#                    TYPE SYSTEM ANTI-PATTERNS (from 155-test verification)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 17. :tobool "yes" RETURNS nil, NOT true                                     │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :if ([:tobool "yes"]) do={ :put "works"; }  # Never executes!
+
+# ✓ CORRECT - Use numeric input:
+:put [:tobool 1];                     # => true
+:put [:tobool 0];                     # => false
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 18. :tonum DOES NOT SUPPORT FLOATS OR WHITESPACE                            │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :local n [:tonum "23.8"];           # => nil (not 23!)
+# :local m [:tonum " 100 "];          # => nil (spaces!)
+
+# ✓ CORRECT - Clean input first:
+:local clean "100";
+:put [:tonum $clean];                 # => 100
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 19. [:typeof function] RETURNS "array", NOT "code"                           │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG assumption:
+# :if ([:typeof $fn] = "code") do={ ... }  # Never true!
+
+# ✓ CORRECT:
+:global fn do={ :return 1; };
+:if ([:typeof $fn] = "array") do={ :put "is-function"; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 20. EMPTY ARRAY [] RETURNS TYPE "nil", NOT "array"                          │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :if ([:typeof $arr] = "array") do={ ... }  # Fails for empty!
+
+# ✓ CORRECT - Check length instead:
+:local arr [];
+:if ([:len $arr] = 0) do={ :put "empty"; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 21. STRING COMPARISON < > NOT ALLOWED                                       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :if ("abc" < "xyz") do={ ... }      # RUNTIME ERROR!
+
+# ✓ CORRECT - Only = and != work for strings:
+:if ("abc" = "abc") do={ :put "equal"; };
+:if ("abc" != "xyz") do={ :put "different"; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 22. INTEGER OVERFLOW WRAPS SILENTLY                                         │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ DANGEROUS:
+# :local big (9223372036854775807 + 1);  # => -9223372036854775808 (wrapped!)
+
+# ✓ CORRECT - Check bounds if needed:
+:local maxInt 9223372036854775807;
+# No overflow protection - be careful with large numbers!
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 23. STRING + NUMBER AUTO-COERCES (SURPRISING!)                               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# This is NOT an error - it works, but may surprise:
+:local strVal "5";
+:put ($strVal + 10);                  # => 15 (string coerced to num!)
+
+# Be explicit if you want concatenation:
+:put ($strVal . 10);                  # => "510"
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 24. IP ARITHMETIC WORKS (OFTEN UNKNOWN)                                     │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# This actually WORKS - not an error:
+:put (192.168.1.1 + 1);               # => 192.168.1.2
+:put (192.168.1.100 & 255.255.255.0); # => 192.168.1.0 (netmask apply)
