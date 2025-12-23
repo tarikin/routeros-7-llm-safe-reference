@@ -1,8 +1,5 @@
 # RouterOS 7 LLM Anti-Patterns Reference
-# ══════════════════════════════════════════════════════════════════════════════
-# VERIFIED PITFALLS: Errors discovered through empirical testing on RouterOS 7.21rc2
-# These are NOT obvious from reading mini-ref.rsc - LLM training data gaps.
-# ══════════════════════════════════════════════════════════════════════════════
+# VERIFIED PITFALLS: Errors discovered through empirical testing on RouterOS 7.21+
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 1. VARIABLE NAMING - SPECIAL CHARS REQUIRE QUOTES EVERYWHERE               │
@@ -125,6 +122,7 @@
 #   - Accessing outer :local from function
 #   - Returning do={} blocks
 #   - Unquoted special chars in var names (-, _)
+#   - Lowercase hex escapes (\e2 instead of \E2)
 #
 # SILENT FAILURES (no error, just empty):
 #   - Out-of-scope variable access
@@ -136,3 +134,71 @@
 #   - :execute "script" not :execute script="script"
 #   - Multiline :onerror may fail
 #   - Recursive fn needs :global self-ref inside body
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#                    ESCAPING ANTI-PATTERNS (from 72-test verification)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 11. LOWERCASE HEX ESCAPES = PARSE ERROR                                     │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :put "\e2\9c\85";           # PARSE ERROR - lowercase hex
+
+# ✓ CORRECT - UPPERCASE hex only:
+:put "\E2\9C\85";             # => ✅
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 12. $"quoted-var" CANNOT BE USED INLINE IN STRINGS                          │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Syntax error:
+# :put "Text $\"my-var\" text";
+
+# ✓ CORRECT - Use concatenation:
+:local "my-var" "HYPHEN";
+:put ("Text " . $"my-var" . " text");
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 13. :execute script= PARAMETER DOES NOT EXIST                               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :execute script=":put test";
+
+# ✓ CORRECT - First positional argument:
+:execute ":put test";
+
+# Exception: as-string version uses script=
+:local result [:execute script=":put \"test\"" as-string];
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 14. SCHEDULER $var vs \$var EXPANSION TIMING                                │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ COMMON MISTAKE - Variable baked in at creation:
+:local myVal "at-creation";
+# on-event=":log info \"$myVal\"" => expands NOW, not at runtime
+
+# ✓ CORRECT - Use \$ for runtime expansion:
+# on-event=":global myGlobal;:log info \$myGlobal"
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 15. NESTED QUOTE ESCAPE DEPTH                                               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# Level 1: "text \"quote\" text"
+# Level 2 (scheduler): ":put \"inner \\\"deep\\\" inner\""
+# Level 3 (:execute in scheduler): add more backslashes
+
+# ✗ COMMON: Forgetting to double escapes at each level
+# ✓ PATTERN: Each nesting level doubles the backslashes
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 16. :execute IS ASYNC - OUTPUT NOT IMMEDIATE                                │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Expecting synchronous output:
+# :execute ":put \"hello\"";
+# :put "after";  # Runs before execute completes!
+
+# ✓ CORRECT - Add delay or use as-string:
+:execute ":put \"hello\"";
+:delay 500ms;
+:put "after";
+
