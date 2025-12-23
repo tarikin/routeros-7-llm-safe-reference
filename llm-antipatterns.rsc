@@ -283,3 +283,111 @@
 # This actually WORKS - not an error:
 :put (192.168.1.1 + 1);               # => 192.168.1.2
 :put (192.168.1.100 & 255.255.255.0); # => 192.168.1.0 (netmask apply)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#                    FLOW CONTROL ANTI-PATTERNS (from 90+ test verification)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 25. :break AND :continue DO NOT EXIST!                                      │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - These commands do not exist:
+# :for i from=1 to=10 do={ :if ($i = 5) do={ :break; }; };
+# Result: "bad command name break"
+
+# ✓ CORRECT - Use flag variable workaround:
+:local exitLoop false;
+:for i from=1 to=10 do={
+  :if (!$exitLoop) do={
+    :if ($i = 5) do={ :set exitLoop true; };
+    # Your code here
+  };
+};
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 26. :elseif / elif / else if DOES NOT EXIST                                 │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :if ($x = 1) do={} :elseif ($x = 2) do={};
+
+# ✓ CORRECT - Nest :if inside else:
+:if ($x = 1) do={} else={ :if ($x = 2) do={}; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 27. :return WITHOUT VALUE IS ERROR                                          │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :global myFn do={ :return; };  # ERROR: missing value(s) of argument(s)
+
+# ✓ CORRECT:
+:global myFn do={ :return ""; };        # Empty string
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 28. STRING IN :if CONDITION IS ERROR                                        │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :if ("text") do={ }  # ERROR: "conditional is not boolean"
+
+# ✓ CORRECT:
+:if ([:len "text"] > 0) do={ };         # Check string length
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 29. SHORT-CIRCUIT EVALUATION DOES NOT WORK                                  │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ ASSUMES short-circuit (WRONG):
+:if (true || [$expensiveFn]) do={ };    # expensiveFn IS CALLED!
+
+# ✓ CORRECT - Use nested :if:
+:if (true) do={} else={ :if ([$expensiveFn]) do={}; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 30. :for with from>to STILL EXECUTES (WRAPS!)                               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG assumption that this runs 0 times:
+# :for i from=10 to=5 do={}  # Actually runs 6 times (wraps to max)!
+
+# ✓ CORRECT - Check direction or use step=-1:
+:for i from=10 to=5 step=-1 do={ };     # Correct countdown
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 31. SYNTAX ERRORS CANNOT BE CAUGHT                                          │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Parse errors are not runtime errors:
+# :onerror e in={ :nonexistent-cmd } do={}  # Script FAILS at parse time!
+
+# ✓ CORRECT - Only runtime errors are catchable
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 32. :quit IS NOT CATCHABLE                                                  │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG:
+# :onerror e in={ :quit } do={ :put "caught"; }  # Script terminates!
+
+# ✓ CORRECT - Use :error instead for catchable termination:
+:onerror e in={ :error "my-exit"; } do={ :put "caught"; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 33. LOOP ITERATOR SCOPE = NOTHING AFTER LOOP                                │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming iterator is available after loop:
+:for i from=1 to=5 do={ };
+# :put $i;  # $i is "nothing" here!
+
+# ✓ CORRECT - Use separate variable:
+:local last 0;
+:for i from=1 to=5 do={ :set last $i; };
+:put $last;  # => 5
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 34. switch/case AND goto DO NOT EXIST                                       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - These do not exist:
+# switch ($x) { case 1: ... }
+# :goto label;
+
+# ✓ CORRECT - Use nested :if or state machine pattern:
+:local state "start";
+:while ($state != "done") do={
+  :if ($state = "start") do={ :set state "step1"; };
+  :if ($state = "step1") do={ :set state "done"; };
+};
