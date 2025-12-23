@@ -1,112 +1,145 @@
-# RouterOS 7 LLM-Safe Reference
+# RouterOS 7 LLM-Safe Reference 🚀
 
-> **“Token-Efficient Scripting for AI-Driven RouterOS Tasks”**  
+> **The Ultimate Grounding Context for AI-Powered Network Automation**
+>
+> 🛡️ **Empirically Verified on RouterOS 7.21+ | December 2025**  
+> 🤖 **Compatible with:** OpenAI GPT · Anthropic Claude · Google Gemini · Meta LLaMA · xAI Grok · DeepSeek · Perplexity · Cursor · Windsurf · GitHub Copilot · Antigravity
 
-A minimal, battle-tested RouterOS 7 scripting snippet—designed **specifically** to be **attached** to Large Language Model (LLM) prompts (e.g., ChatGPT, Claude) so that AI remains grounded in **real**, **verified** commands.  
+---
 
-## Why This Repository?
+## ❓ What Is This?
 
-1. **Eliminate Hallucinations**: Attach or paste `mini-ref.rsc` into your LLM prompts to enforce correct RouterOS syntax, bypassing “dream code.”  
-2. **Token-Efficient**: The snippet is carefully curated to include essential commands—no fluff, ensuring each token guides the LLM toward **accurate** output.  
-3. **Advanced Error Handling**: Utilizes `:retry`, `:onerror`, and robust control structures to showcase best practices.  
-4. **Deep Integration**: Covers JSON, DSV, array/dictionary manipulation, `execute` calls, and more for real-world automation tasks.  
+A curated set of **`.rsc` reference files** designed to be **injected into AI agent prompts** (system prompts, RAG pipelines, or direct context windows). These files act as **Truth Anchors**—forcing LLMs to generate RouterOS 7 scripts that are **syntactically correct**, **semantically valid**, and **free of hallucinations**.
 
-## How It Works
+> **TL;DR:** Stop your AI from inventing fake commands. Feed it verified reality.
 
-Rather than reading this snippet manually, you **provide** `mini-ref.rsc` to your LLM whenever you need it to write or refine RouterOS scripts. Including the snippet in your prompt is the key—LLMs learn from every line and produce scripts that align with verified syntax.  
+---
 
-## Example Usage
+## 🔥 Who Is This For?
 
-When you talk to ChatGPT or Claude, **reference** the lines from `mini-ref.rsc` to guide script generation.  
+| Persona                       | Use Case                                                                     |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| **Prompt Engineers**          | Inject `.rsc` files into system prompts for constraint-guided generation     |
+| **Network Architects**        | Generate reliable automation scripts without manual syntax debugging         |
+| **DevOps / NetMLOps**         | Build self-healing infrastructure with AI-assisted scripting                 |
+| **MikroTik Enthusiasts**      | "Vibe-script" with confidence—let AI handle the syntax, you handle the logic |
+| **Agentic Workflow Builders** | Ground multi-step reasoning agents with verified network primitives          |
 
-### Sample Prompt #1: Basic Usage
+---
+
+## 📚 The Reference Collection
+
+Each file is **battle-tested** on real RouterOS 7.21 hardware. Use them as context for your AI:
+
+| File                               | Purpose                              | When to Use                          |
+| ---------------------------------- | ------------------------------------ | ------------------------------------ |
+| **`references/core.rsc`**          | Core syntax cheatsheet               | General scripting, quick tasks       |
+| **`references/datetime.rsc`**      | Time, dates, certificates, logs      | Scheduling, expiration checks, NTP   |
+| **`references/async.rsc`**         | Blocking vs async behavior           | `:execute`, `/tool fetch`, jobs      |
+| **`references/errors.rsc`**        | `:onerror`, `:retry`, `:quit`        | Mission-critical automation          |
+| **`references/flow.rsc`**          | Loops, conditionals, control flow    | Complex logic (no `:break` trap!)    |
+| **`references/types.rsc`**         | Type system, coercion, `:tonsec`     | Math, IP operations, type checks     |
+| **`references/escaping.rsc`**      | Nested quotes, scheduler strings     | Deep nesting (up to 3 levels)        |
+| **`references/scope.rsc`**         | Variable scoping, `:global`/`:local` | Function design, closures            |
+| **`references/anti-patterns.rsc`** | 60+ documented hallucinations        | **LLM-only** — prevents bad patterns |
+
+---
+
+## 🚀 Changelog (December 2025)
+
+Massive expansion with **500+ empirical tests** across 20 categories:
+
+- ✅ **ISO 8601 Dates**: Validated v7.10+ format (`YYYY-MM-DD`), not old `MMM/DD/YYYY`
+- ✅ **Time Arithmetic**: Confirmed `23h + 3h = 1d02:00:00` (no 24h wrap)
+- ✅ **Blocking Traps**: Identified `/tool fetch`, `/certificate sign`, `/tool e-mail` as synchronous
+- ✅ **Type Precision**: Documented `:tonsec` as **nanoseconds** (not seconds!)
+- ✅ **Anti-Patterns**: Catalogued 60+ common LLM hallucinations with corrections
+
+---
+
+## 💡 How to Use
+
+### For Chat-Based AI (GPT, Claude, Gemini)
+
 ```
-You are an expert in MikroTik RouterOS 7.  
-Here's a verified reference snippet (lines 10-30) to ensure correct syntax:  
-[PASTE mini-ref.rsc LINES 10-30 HERE]
+You are an expert in MikroTik RouterOS 7.
+Below is a verified reference to ensure correct syntax:
 
-Please create a script to add a firewall filter that drops traffic from 1.2.3.4, 
-using the same formatting and syntax as the reference.
-```
+[PASTE mini-ref.rsc HERE]
 
-**Result**: The LLM will pull correct syntax from lines 10–30, ensuring no guesswork.  
-
-### Sample Prompt #2: Optimizing Existing Script
-```
-You are ChatGPT, specialized in RouterOS. 
-Below is a reference snippet to avoid syntax errors: 
-[PASTE FULL mini-ref.rsc HERE]
-
-I have a script that times out occasionally. 
-Please optimize it, ensuring each function aligns with the reference’s approach, 
-especially the :retry logic and do{} while=() loops.
-```
-
-**Result**: The LLM merges your existing script with the snippet’s proven patterns for error handling.  
-
-### Sample Prompt #3: JSON/DSV Data Handling
-```
-You are an AI that must strictly follow the syntax in the attached RouterOS snippet: 
-[PASTE mini-ref.rsc LINES 70–90]
-
-Given a remote server returning JSON data, generate a script that fetches, 
-deserializes, and logs each key-value pair. 
-Use the reference approach for JSON and DSV.
-```
-
-**Result**: The LLM references lines 70–90 to produce correct code for JSON/DSV operations.  
-
-### Ultimate Prompt for Edge Performance
-```
-You are an advanced RouterOS 7 automation specialist, strictly confined to the 
-syntax from the attached reference snippet:
-[PASTE FULL mini-ref.rsc HERE]
-
-Scenario: 
-- We have an NTP sync requirement 
-- We must fetch new config data in JSON 
-- We want a :retry mechanism if fetch fails 
-- We validate the "status" field from the JSON 
-- If not "active", we append a new array element 
-- Then beep at 300Hz for 500ms if everything succeeds.
-
-Generate a single cohesive script that does all of this, 
-strictly following the snippet’s approach, no extra commands or guesswork.
+Generate a script that [YOUR TASK].
+Follow the reference syntax exactly—no invented commands.
 ```
 
-**Result**: The LLM delivers a meticulously accurate script, leveraging the snippet’s array, JSON, and beep logic.  
+### For Agentic Workflows (RAG, Tool-Use)
 
-## Explore Advanced Prompt Library
-For real-world RouterOS 7 automation tasks with LLM assistance, check out our
-[**Prompt Library**](ADVANCED-PROMPTS-EXAMPLES.md) where we feature examples of complex scenarios. Each prompt references
-the **full** `mini-ref.rsc` script, ensuring maximum alignment with official syntax and best practices.
+1. **Index** the `.rsc` files in your vector database
+2. **Retrieve** relevant chunks based on user query (e.g., "scheduler" → `datetime-ref.rsc`)
+3. **Inject** retrieved context into agent's working memory
+4. **Generate** with grounded constraints
 
-> # Hints for validating RouterOS syntax
-> 
-> 1) Open your RouterOS terminal (Winbox or SSH).  
-> 2) Run: `/system script add name=MyScriptName`  
-> 3) Then: `/system script edit MyScriptName value-name=source`  
-> 4) Paste your script in the built-in editor. It will highlight any syntax errors.  
-   (Note: This does not guarantee runtime correctness—only syntax validation.)
+### For IDE Copilots (Cursor, Windsurf, Copilot)
 
-## Contributing
+- Add `.rsc` files to your project
+- Reference them in comments: `// See async-ref.rsc for blocking behavior`
+- Copilot will respect the context automatically
 
-We welcome new commands or formatting tweaks that help keep the snippet concise yet comprehensive. Submit a PR, and we’ll test your additions with ChatGPT or Claude for syntactic accuracy.
+---
 
-1. **Fork** this repo  
-2. **Branch** your changes  
-3. **Submit** a Pull Request detailing improvements  
-4. **AI + Manual Review** ensures final correctness  
+## 🛡️ Why This Works
 
-## License
+| Problem                      | Solution                              |
+| ---------------------------- | ------------------------------------- |
+| LLMs invent `:elseif`        | `flow-ref.rsc` shows it doesn't exist |
+| LLMs assume `fetch` is async | `async-ref.rsc` proves it blocks      |
+| LLMs use old date formats    | `datetime-ref.rsc` verifies ISO       |
+| LLMs guess type conversions  | `types-ref.rsc` maps all coercions    |
 
-Open-sourced under the [MIT License](LICENSE).  
+> **Empirical Truth > Training Data Noise**
 
-## About the Author
+---
 
-**Nikita Tarikin** – MikroTik Network Infrastructure Architect & AI-Enhanced Solutions  
-- [GitHub](https://github.com/tarikin)  
-- [LinkedIn](https://www.linkedin.com/in/nikita-tarikin/)  
-- [Website](https://tarikin.com/)  
+## 🔗 Quick Links
 
-> **Use `mini-ref.rsc` as your LLM truth source.** Keep it attached to your AI prompts, and watch your RouterOS scripts reach new levels of consistency and accuracy!
+- [**Prompt Library**](docs/prompt-library.md) — Real-world automation prompts
+- [**CLI Menu Structure**](docs/cli-map.md) — Full command hierarchy
+- [**Anti-Patterns Catalog**](references/anti-patterns.rsc) — What NOT to generate
+
+---
+
+## 🧪 Validation Tip
+
+Test AI-generated scripts before deployment:
+
+```bash
+/system script add name=Test
+/system script edit Test value-name=source
+# Paste script → Editor highlights syntax errors
+```
+
+> ⚠️ Syntax validation only—runtime behavior requires live testing.
+
+---
+
+## 🤝 Contributing
+
+1. **Fork** → **Branch** → **PR**
+2. All contributions tested with AI + manual verification
+3. Focus: Conciseness, accuracy, LLM-friendliness
+
+---
+
+## 📜 License
+
+[MIT License](LICENSE) — Use freely, attribute kindly.
+
+---
+
+## 👤 Author
+
+**Nikita Tarikin** — Network Infrastructure Architect & AI-Driven Automation  
+[GitHub](https://github.com/tarikin) · [LinkedIn](https://linkedin.com/in/nikita-tarikin) · [tarikin.com](https://tarikin.com)
+
+---
+
+> **Keywords:** _RouterOS 7, MikroTik Scripting, AI Network Automation, LLM Grounding, RAG for Networks, Hallucination-Free Code Generation, Agentic NetDevOps, Context Injection, Self-Healing Infrastructure, Prompt Engineering, Constraint-Guided Generation, Vibe-Scripting, Infrastructure-as-Code, Network Reliability Engineering_
