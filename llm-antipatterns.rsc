@@ -391,3 +391,115 @@
   :if ($state = "start") do={ :set state "step1"; };
   :if ($state = "step1") do={ :set state "done"; };
 };
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#                    ERROR HANDLING ANTI-PATTERNS (from 400+ test verification)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 35. :execute ERRORS ARE ISOLATED - NOT CAUGHT BY PARENT!                    │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming parent catches :execute errors:
+:local caught false;
+:onerror e in={
+  [:execute ":error \"test\"" as-string];
+} do={
+  :set caught true;
+};
+# caught = false! Execute is isolated!
+
+# ✓ CORRECT - Handle errors inside the executed script
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 36. ARRAY OUT-OF-BOUNDS RETURNS NIL, NOT ERROR!                             │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Expecting error on array access:
+:local arr {1;2;3};
+:onerror e in={ :local x ($arr->99); } do={ :put "caught"; };
+# Handler NOT called - returns nil instead!
+
+# ✓ CORRECT - Check bounds BEFORE accessing:
+:if ($idx < [:len $arr]) do={ :local x ($arr->$idx); };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 37. DICT KEY MISS RETURNS "nothing", NOT ERROR!                             │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Expecting error on missing key:
+:local dict {"a"=1};
+:onerror e in={ :local x ($dict->"nonexistent"); } do={ :put "caught"; };
+# Handler NOT called - returns nothing!
+
+# ✓ CORRECT - Check if key exists:
+:if ([:typeof ($dict->"key")] != "nothing") do={ :put ($dict->"key"); };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 38. EMPTY FIND IS NOT AN ERROR!                                             │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Expecting error when find is empty:
+:onerror e in={
+  /interface set [find name="nonexistent"] disabled=yes;
+} do={
+  :put "caught";
+};
+# Handler NOT called - set on empty list does nothing!
+
+# ✓ CORRECT - Check find result first:
+:local found [/interface find name="ether1"];
+:if ([:len $found] > 0) do={ /interface set $found disabled=yes; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 39. :do on-error HAS NO ERROR VARIABLE                                      │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Assuming $e is available:
+# :do { :error "x"; } on-error={ :put $e; };  # $e undefined!
+
+# ✓ CORRECT - Use :onerror if you need error message:
+:onerror e in={ :error "x"; } do={ :put $e; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 40. NIL OPERATIONS DON'T THROW ERRORS                                       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Expecting error on nil:
+:local nilVar;
+:onerror e in={ :local x ($nilVar + 1); } do={ :put "caught"; };
+# May not be caught as expected!
+
+# ✓ CORRECT - Check for nil first:
+:if ([:typeof $var] != "nothing" && [:typeof $var] != "nil") do={
+  :local x ($var + 1);
+};
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 41. UNDERSCORE IS NOT A VALID VARIABLE NAME                                 │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✗ WRONG - Common pattern from other languages:
+# :onerror _ in={ :error "x"; } do={};  # Syntax error!
+
+# ✓ CORRECT - Use named variable:
+:onerror e in={ :error "x"; } do={};
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 42. :onerror RETURNS BOOL - USE IT!                                         │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# ✓ USEFUL PATTERN - Use return value for conditionals:
+:local hadError [:onerror e in={ :resolve "invalid.xyz"; } do={}];
+:if ($hadError) do={
+  :put "DNS failed";
+};
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 43. :retry SUCCESS STOPS RETRYING                                           │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# :retry stops when command succeeds (no error)
+:onerror e in={
+  :retry command={
+    :if ($attempt < 3) do={ :error "retry"; };
+    # Success! No more retries
+  } delay=0 max=5;
+} do={};
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 44. ERROR MESSAGE ALWAYS INCLUDES LINE INFO                                 │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# Error message format: "my-message (:error; line 18)"
+# Must parse string to extract original message
