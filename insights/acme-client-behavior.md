@@ -65,7 +65,11 @@ FACT: No manual rebinding required.
 - **Reason:** Reseting the key likely generates a new ACME Account Key. New accounts cannot access the Authorization Cache of the old account.
 - **Impact:** Key rotation **forces** a fresh HTTP-01 validation cycle.
 - **Constraint:** Do not rotate keys if you are relying on cached authorization (closed ports).
-- **Persistence:** A failed renewal attempt with `reset-private-key=yes` **does not damage** the existing certificate. The internal ID and fingerprint remain identical (safe failure).
+- **Persistence (FAILURE):** A failed renewal attempt **does not damage** the existing certificate (Safe).
+- **Persistence (SUCCESS):** A successful rotation **CREATES A NEW CERTIFICATE OBJECT** (New Name, New ID).
+  - **CRITICAL:** The old certificate remains. The new one is added.
+  - **IMPACT:** Services (SSTP, OVPN, IPsec etc.) bound to the old certificate **WILL NOT** switch to the new one. They become orphaned.
+  - **Constraint:** `reset-private-key=yes` is NOT a rotation tool, it is a **Re-provisioning** tool. You must update all services to point to the new certificate manually or via script.
 
 ### 4. The "Offline Router" Risk (Cache Miss Recovery)
 
