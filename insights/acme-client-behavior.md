@@ -26,7 +26,9 @@
 ```
 FACT: Renewals within auth cache window require NO incoming traffic.
 FACT: Firewall rules (filter/raw) show 0 packets during cached renewal.
+
 FACT: This is NOT an internal bypass — it's server-side auth reuse.
+FACT: Cached Auth renewal works even if Port 80 is strictly BLOCKED (timeout) at the firewall.
 ```
 
 | Scenario                   | Port 80 Required | Firewall Matters |
@@ -54,7 +56,18 @@ FACT: Service bindings (IPsec, SSTP) auto-update to new cert content.
 FACT: No manual rebinding required.
 ```
 
-### 3. The "Offline Router" Risk (Cache Miss Recovery)
+### 3. Key Rotation & Auth Cache (The "Reset" Risk)
+
+**Experiment:** `/certificate/enable-ssl-certificate ... reset-private-key=yes`
+**Result:**
+
+- **FAILURE** if Port 80 is closed, even if auth was cached for the domain.
+- **Reason:** Reseting the key likely generates a new ACME Account Key. New accounts cannot access the Authorization Cache of the old account.
+- **Impact:** Key rotation **forces** a fresh HTTP-01 validation cycle.
+- **Constraint:** Do not rotate keys if you are relying on cached authorization (closed ports).
+- **Persistence:** A failed renewal attempt with `reset-private-key=yes` **does not damage** the existing certificate. The internal ID and fingerprint remain identical (safe failure).
+
+### 4. The "Offline Router" Risk (Cache Miss Recovery)
 
 **Scenario:**
 If a router is offline for >30 days (or >7 hours in 2028), the cached authorization **expires**.
