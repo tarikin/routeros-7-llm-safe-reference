@@ -2,7 +2,7 @@
 
 > **The Ultimate Grounding Context for AI-Powered Network Automation**
 >
-> 🛡️ **Empirically Verified on RouterOS 7.21+ | December 2025**  
+> 🛡️ **Empirically Verified on RouterOS 7.21+ | January 2026**  
 > 🤖 **Compatible with:** OpenAI GPT · Anthropic Claude · Google Gemini · Meta LLaMA · xAI Grok · DeepSeek · Perplexity · Cursor · Windsurf · GitHub Copilot · Antigravity
 
 ---
@@ -31,21 +31,34 @@ A curated set of **`.rsc` reference files** designed to be **injected into AI ag
 
 Each file is **battle-tested** on real RouterOS 7.21 hardware. Use them as context for your AI:
 
-| File                               | Purpose                              | When to Use                          |
-| ---------------------------------- | ------------------------------------ | ------------------------------------ |
-| **`references/core.rsc`**          | Core syntax cheatsheet               | General scripting, quick tasks       |
-| **`references/datetime.rsc`**      | Time, dates, certificates, logs      | Scheduling, expiration checks, NTP   |
-| **`references/async.rsc`**         | Blocking vs async behavior           | `:execute`, `/tool fetch`, jobs      |
-| **`references/errors.rsc`**        | `:onerror`, `:retry`, `:quit`        | Mission-critical automation          |
-| **`references/flow.rsc`**          | Loops, conditionals, control flow    | Complex logic (no `:break` trap!)    |
-| **`references/types.rsc`**         | Type system, coercion, `:tonsec`     | Math, IP operations, type checks     |
-| **`references/escaping.rsc`**      | Nested quotes, scheduler strings     | Deep nesting (up to 3 levels)        |
-| **`references/scope.rsc`**         | Variable scoping, `:global`/`:local` | Function design, closures            |
-| **`references/anti-patterns.rsc`** | 60+ documented hallucinations        | **LLM-only** — prevents bad patterns |
+| File                               | Purpose                                          | When to Use                                       |
+| ---------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| **`references/core.rsc`**          | Core syntax cheatsheet                           | General scripting, quick tasks                    |
+| **`references/datetime.rsc`**      | Time, dates, certificates, logs                  | Scheduling, expiration checks, NTP                |
+| **`references/async.rsc`**         | Blocking vs async behavior                       | `:execute`, `/tool fetch`, jobs                   |
+| **`references/errors.rsc`**        | `:onerror`, `:retry`, `:quit`                    | Mission-critical automation                       |
+| **`references/flow.rsc`**          | Loops, conditionals, control flow                | Complex logic (no `:break` trap!)                 |
+| **`references/types.rsc`**         | Type system, coercion, `:tonsec`                 | Math, IP operations, type checks                  |
+| **`references/escaping.rsc`**      | Nested quotes, scheduler strings                 | Deep nesting (up to 3 levels)                     |
+| **`references/scope.rsc`**         | Variable scoping, `:global`/`:local`             | Function design, closures                         |
+| **`references/anti-patterns.rsc`** | 60+ documented hallucinations                    | **LLM-only** — prevents bad patterns              |
+| **`references/safe-mode.rsc`**     | Transaction safety, rollback, micro-transactions | PTY sessions, `:execute` atomics, coverage limits |
 
 ---
 
-## 🚀 Changelog (December 2025)
+## 🚀 Changelog
+
+### January 2026
+
+Safe-mode deep dive with **50+ empirical tests** on CHR 7.21:
+
+- ✅ **Return Types**: Full type audit (`take`→nil, `release`→bool, property types by state)
+- ✅ **Coverage Limits**: Certificates NOT tracked, files ARE tracked (all platforms)
+- ✅ **Micro-Transactions**: `:execute` + `on-error=unroll` enables scripted rollback
+- ✅ **11 Anti-Patterns**: PTY requirement, external side-effects, global variables
+- ✅ **PTY Discovery**: Safe-mode silently fails without `ssh -tt`
+
+### December 2025
 
 Massive expansion with **500+ empirical tests** across 20 categories:
 
@@ -88,12 +101,13 @@ Follow the reference syntax exactly—no invented commands.
 
 ## 🛡️ Why This Works
 
-| Problem                      | Solution                              |
-| ---------------------------- | ------------------------------------- |
-| LLMs invent `:elseif`        | `flow-ref.rsc` shows it doesn't exist |
-| LLMs assume `fetch` is async | `async-ref.rsc` proves it blocks      |
-| LLMs use old date formats    | `datetime-ref.rsc` verifies ISO       |
-| LLMs guess type conversions  | `types-ref.rsc` maps all coercions    |
+| Problem                                | Solution                              |
+| -------------------------------------- | ------------------------------------- |
+| LLMs invent `:elseif`                  | `flow-ref.rsc` shows it doesn't exist |
+| LLMs assume `fetch` is async           | `async-ref.rsc` proves it blocks      |
+| LLMs use old date formats              | `datetime-ref.rsc` verifies ISO       |
+| LLMs guess type conversions            | `types-ref.rsc` maps all coercions    |
+| LLMs assume safe-mode works in scripts | `safe-mode.rsc` proves PTY required   |
 
 > **Empirical Truth > Training Data Noise**
 

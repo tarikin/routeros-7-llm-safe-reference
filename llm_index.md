@@ -65,3 +65,14 @@ This index serves as a navigational guide for AI agents to accessing authoritati
 - **Link**: [references/anti-patterns.rsc](references/anti-patterns.rsc)
 - **Topics**: Common AI errors, non-existent commands, deprecated syntax, fake parameters.
 - **Instruction**: **ALWAYS** read this file to error-check your generated code against known common hallucinations. If your generated code matches an anti-pattern here, DISCARD IT and use the corrected approach.
+
+## 10. Safe-Mode Transactions
+
+- **File**: `references/safe-mode.rsc`
+- **Link**: [references/safe-mode.rsc](references/safe-mode.rsc)
+- **Topics**: Transaction safety, rollback/commit, session-based changes, return types, error handling, micro-transactions with `:execute`, coverage limitations (certificates NOT tracked).
+- **Instruction**: Read this file when generating scripts that modify critical connectivity (firewall, interfaces, routes). **CRITICAL WARNINGS**:
+  - Safe-mode requires PTY allocation (`ssh -tt`), fails silently without it
+  - Rollback ONLY works on session termination, NOT on script `:error`
+  - Certificates, log entries, global variables are NOT protected
+  - `:execute` can enable micro-transactions with automatic rollback on subprocess failure (see Section 13)
