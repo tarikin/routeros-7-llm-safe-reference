@@ -94,6 +94,37 @@ scp id_rsa_router admin@192.168.88.1:id_rsa_router
 #  0 user=admin key-type=rsa bits=4096 info=""
 ```
 
+### 5. Automation Patterns (Router-to-Router)
+
+**User Context / Scoping (CRITICAL)**
+
+```
+FACT: Private keys are strictly scoped to the RouterOS User.
+FACT: A script owned by 'admin' CANNOT use keys imported by 'api-ssh'.
+CONSTRAINT: Scheduler scripts MUST have 'owner=api-ssh' to use that user's keys.
+```
+
+**Ownership Immutability (The "Sudo" Problem)**
+
+```
+FACT: Admin CANNOT change a scheduler's owner to another user (parameter missing/read-only).
+FACT: Admin modifying a user's script changes the owner to 'admin' (Breaks execution chain).
+WORKAROUND: To create a scheduler owned by 'api-ssh', you MUST log in AS 'api-ssh' (via SSH/API) and create it.
+```
+
+**Command Selection**
+| Command | Use Case | Interactive? |
+| :--- | :--- | :--- |
+| `/system ssh` | Interactive Shell | ✅ Yes (Hangs scripts if auth fails) |
+| `/system ssh-exec` | One-shot remote command | ❌ No (Best for automation) |
+
+**Host Key Verification (TOFU)**
+
+- RouterOS implements Trust-On-First-Use.
+- **Problem**: First connection prompts `yes/no` to trust host key.
+- **Impact**: Automation fails silently on fresh hosts.
+- **Fix**: Must perform **manual first connection** or ensure known_hosts is populated.
+
 ---
 
 ## ⚠️ Constraints & Gotchas
