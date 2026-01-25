@@ -119,6 +119,15 @@ Follow the reference syntax exactly—no invented commands.
 - [**CLI Menu Structure**](docs/cli-map.md) — Full command hierarchy
 - [**Anti-Patterns Catalog**](references/anti-patterns.rsc) — What NOT to generate
 
+## 🧠 Empirical Insights
+
+Deep dives into specific RouterOS behaviors, established through rigorous testing:
+
+| Topic                                                            | Description                                            |
+| :--------------------------------------------------------------- | :----------------------------------------------------- |
+| [**ACME Client Behavior**](insights/acme-client-behavior.md)     | Renewal logic, auth caching, and scheduler constraints |
+| [**SSH Private Key Import**](insights/ssh-private-key-import.md) | Key types (RSA only), PEM format, and import quirks    |
+
 ---
 
 ## 🧪 Validation Tip

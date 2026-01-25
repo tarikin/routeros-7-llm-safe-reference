@@ -76,3 +76,15 @@ This index serves as a navigational guide for AI agents to accessing authoritati
   - Rollback ONLY works on session termination, NOT on script `:error`
   - Certificates, log entries, global variables are NOT protected
   - `:execute` can enable micro-transactions with automatic rollback on subprocess failure (see Section 13)
+
+## 11. Empirical Insights (Deep Dives)
+
+- **File**: `insights/acme-client-behavior.md`
+- **Link**: [insights/acme-client-behavior.md](insights/acme-client-behavior.md)
+- **Topics**: ACME, Let's Encrypt, renewal logic, port 80 requirements.
+- **Instruction**: Read this when automating certificate management.
+
+- **File**: `insights/ssh-private-key-import.md`
+- **Link**: [insights/ssh-private-key-import.md](insights/ssh-private-key-import.md)
+- **Topics**: SSH keys, private key import, key formats (PEM), key types (RSA).
+- **Instruction**: Read this prior to generating or importing SSH keys for router-initiated connections.
