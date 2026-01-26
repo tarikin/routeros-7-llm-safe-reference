@@ -42,6 +42,7 @@ Each file is **battle-tested** on real RouterOS 7.21 hardware. Use them as conte
 | **`references/escaping.rsc`**      | Nested quotes, scheduler strings                 | Deep nesting (up to 3 levels)                     |
 | **`references/scope.rsc`**         | Variable scoping, `:global`/`:local`             | Function design, closures                         |
 | **`references/anti-patterns.rsc`** | 60+ documented hallucinations                    | **LLM-only** — prevents bad patterns              |
+| **`references/json.rsc`**          | JSON serialization/deserialization               | API integration, structured data export           |
 | **`references/safe-mode.rsc`**     | Transaction safety, rollback, micro-transactions | PTY sessions, `:execute` atomics, coverage limits |
 
 ---
@@ -50,16 +51,31 @@ Each file is **battle-tested** on real RouterOS 7.21 hardware. Use them as conte
 
 ### January 2026
 
-Safe-mode deep dive with **50+ empirical tests** on CHR 7.21:
+**Safe-Mode Transactions** — 50+ empirical tests on CHR 7.21:
 
 - ✅ **Return Types**: Full type audit (`take`→nil, `release`→bool, property types by state)
 - ✅ **Coverage Limits**: Certificates NOT tracked, files ARE tracked (all platforms)
 - ✅ **Micro-Transactions**: `:execute` + `on-error=unroll` enables scripted rollback
 - ✅ **11 Anti-Patterns**: PTY requirement, external side-effects, global variables
 - ✅ **PTY Discovery**: Safe-mode silently fails without `ssh -tt`
-- ✅ **SSH Insights**: Mapped **RSA-only** constraint for private keys (client) vs **Ed25519 support** for public keys (user auth)
-- ✅ **Automation scoping**: Validated strictly scoped user contexts for SSH key usage
-- ✅ **Execution Patterns**: Documented reliable methods for non-interactive SSH output capture (`:execute as-string`)
+
+**SSH Key Management** — Verified key types and import constraints:
+
+- ✅ **Private Keys**: Mapped **RSA-only** constraint for router-initiated connections (client mode)
+- ✅ **Public Keys**: Verified **Ed25519 support** for user authentication (login to router)
+- ✅ **Key Scoping**: Documented per-user key stores and ownership boundaries
+
+**SSH Automation & Execution** — Non-interactive command patterns:
+
+- ✅ **Execution Context**: Validated caller vs script owner identity in manual vs scheduled runs
+- ✅ **Command Selection**: `ssh-exec` (works in scripts) vs `ssh` (fails without PTY)
+- ✅ **Output Capture**: Documented reliable `output-to-file` pattern (`:execute as-string` broken)
+
+**JSON & LLM API Integration** — Router-to-AI communication verified on RouterOS 7.21+:
+
+- ✅ **JSON Serialization**: Complete `:serialize`/`:deserialize` reference with type mapping and `json.no-string-conversion` option
+- ✅ **Router → AI**: Full request/response cycle for OpenAI/Anthropic with verified blocking patterns
+- ✅ **TLS Security**: Mapped built-in CA store (7.19+) and mandatory `check-certificate=yes` requirement
 
 ### December 2025
 
@@ -132,6 +148,7 @@ Deep dives into specific RouterOS behaviors, established through rigorous testin
 | [**SSH Private Key Import**](insights/ssh-private-key-import.md)       | Key types (RSA only), PEM format, and import quirks    |
 | [**SSH Public Key Import (User)**](insights/ssh-public-key-import.md)  | User login keys, Ed25519 support, and anti-patterns    |
 | [**SSH Automation & Execution**](insights/ssh-automation-execution.md) | `ssh-exec` vs `ssh`, capture patterns, and TOFU traps  |
+| [**LLM API Communication**](insights/llm-api-communication.md)         | Secure patterns for calling AI models from RouterOS    |
 
 ---
 

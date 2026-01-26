@@ -1,7 +1,7 @@
 # RouterOS 7 LLM-Safe Reference Index
 
-This index serves as a navigational guide for AI agents to accessing authoritative RouterOS 7 scripting references.
-**INSTRUCTION**: When addressing a user request related to the topics below, you **MUST** read the content of the corresponding referenced file to ensure syntactical correctness and avoid hallucinations.
+This index serves as the **authoritative map** for AI agents. It links user intents to specific verified references.
+**INSTRUCTION**: Before generating any RouterOS code, locate the relevant topic below and **READ** the corresponding `.rsc` or `.md` file. This is mandatory to prevent hallucinations.
 
 ## 1. Core Syntax & Basics
 
@@ -16,6 +16,13 @@ This index serves as a navigational guide for AI agents to accessing authoritati
 - **Link**: [references/datetime.rsc](references/datetime.rsc)
 - **Topics**: Time arithmetic, ISO 8601 dates, certificate management, logging timestamps, scheduling.
 - **Instruction**: Read this file when working with schedules, expiration checks, NTP, or any logic involving date and time manipulation. Ensure you use the correct ISO formats and time arithmetic as demonstrated.
+
+## 2a. JSON & DSV Serialization
+
+- **File**: `references/json.rsc`
+- **Link**: [references/json.rsc](references/json.rsc)
+- **Topics**: `:serialize`, `:deserialize`, JSON encoding/decoding, DSV/CSV handling, type mapping, options.
+- **Instruction**: Read this file when working with JSON parsing, API responses, CSV export, or any data serialization. CRITICAL: Be aware of numeric string conversion behavior and use `json.no-string-conversion` option when needed.
 
 ## 3. Asynchronous & Blocking Operations
 
@@ -98,3 +105,8 @@ This index serves as a navigational guide for AI agents to accessing authoritati
 - **Link**: [insights/ssh-automation-execution.md](insights/ssh-automation-execution.md)
 - **Topics**: `ssh-exec`, output capture, automation barriers (TOFU), scripting execution contexts.
 - **Instruction**: Read this when designing scripts that need to execute commands on remote routers via SSH.
+
+- **File**: `insights/llm-api-communication.md`
+- **Link**: [insights/llm-api-communication.md](insights/llm-api-communication.md)
+- **Topics**: JSON API integration, LLM request/response patterns, `/tool fetch` security (`check-certificate=yes`), built-in CA store.
+- **Instruction**: Read this when generating scripts that communicate with LLM APIs (OpenAI, Anthropic, etc.). CRITICAL: Follow the security and JSON serialization best practices.
