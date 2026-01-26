@@ -11,14 +11,19 @@
 **Question:** Who owns the execution?
 **Answer:** The **Caller** owns the execution, NOT the Script Owner, unless strictly spawned by Scheduler.
 
-| Invocation Method                 | Effective Context        | Key Store Used     | Result (Run as `test-user`, Owner `api-ssh`)  |
-| :-------------------------------- | :----------------------- | :----------------- | :-------------------------------------------- |
-| `/system script run`              | **Caller** (`test-user`) | `test-user`'s keys | ❌ **FAIL** (Auth)                            |
-| `:execute script=...`             | **Caller** (`test-user`) | `test-user`'s keys | ❌ **FAIL** (Auth)                            |
-| `/system scheduler`               | **Owner** (`api-ssh`)    | `api-ssh`'s keys   | ✅ **PASS**                                   |
-| `/tool netwatch`                  | **System** (`sys`)       | No keys            | ❌ **FAIL**                                   |
-| `api-ssh` runs own script         | **Caller** (`api-ssh`)   | `api-ssh`'s keys   | ✅ **PASS**                                   |
-| `api-ssh` runs `test-user` script | **Caller** (`api-ssh`)   | `api-ssh`'s keys   | ✅ **PASS** (Code is shared, context is user) |
+| Invocation Method             | Effective Context        | Key Store Used     | Result (Run as `test-user`, Owner `api-ssh`)      |
+| :---------------------------- | :----------------------- | :----------------- | :------------------------------------------------ |
+| `/system script run`          | **Caller** (`test-user`) | `test-user`'s keys | ❌ **FAIL** (Auth - Uses Caller's empty keys)     |
+| `:execute script=...`         | **Caller** (`test-user`) | `test-user`'s keys | ❌ **FAIL** (Auth)                                |
+| `/system scheduler`           | **Script Owner** (`api`) | `api`'s keys       | ✅ **PASS** (Even if Sched Owner != Script Owner) |
+| `/tool netwatch`              | **System** (`sys`)       | No keys            | ❌ **FAIL**                                       |
+| `api` runs own script         | **Caller** (`api`)       | `api`'s keys       | ✅ **PASS**                                       |
+| `api` runs `test-user` script | **Caller** (`api`)       | `api`'s keys       | ✅ **PASS** (Context = Caller)                    |
+
+> **Critical Distinction:**
+>
+> - **Manual Execution**: Uses **Caller's** Identity. (Ignores Script Owner).
+> - **Scheduler Execution**: Uses **Script Owner's** Identity. (Even if scheduled by Admin).
 
 > **Rule:** You cannot "sudo" a script. To test automation, you MUST trigger it via **Scheduler** or log in AS the service user. Use `api-ssh` user for ALL automation.
 
