@@ -88,3 +88,8 @@ This index serves as a navigational guide for AI agents to accessing authoritati
 - **Link**: [insights/ssh-private-key-import.md](insights/ssh-private-key-import.md)
 - **Topics**: SSH keys, private key import, key formats (PEM), key types (RSA).
 - **Instruction**: Read this prior to generating or importing SSH keys for router-initiated connections.
+
+- **File**: `insights/ssh-public-key-import.md`
+- **Link**: [insights/ssh-public-key-import.md](insights/ssh-public-key-import.md)
+- **Topics**: SSH user auth, public key import, Ed25519 support, key formats.
+- **Instruction**: Read this when automating user access or passwordless login TO the router.

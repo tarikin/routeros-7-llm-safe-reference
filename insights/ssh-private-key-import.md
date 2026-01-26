@@ -15,6 +15,8 @@
 | **Maximum Key Size**     | **8192 bits** (Verified)          | Empirical |
 | **Ed25519 Support**      | ❌ **UNSUPPORTED** (Import fails) | Empirical |
 | **Passphrase Support**   | ✅ **YES** (via CLI parameter)    | Empirical |
+| **Local Key Generation** | ❌ **UNSUPPORTED** (Import only)  | Empirical |
+| **EC Keys (ECDSA/Ed)**   | ❌ **UNSUPPORTED** (RSA Only)     | Empirical |
 | **Source File Behavior** | **Consumed** (Deleted on success) | Empirical |
 | **Import Command**       | `/user ssh-keys private import`   | RouterOS  |
 
@@ -37,6 +39,8 @@ Tested on RouterOS 7.22beta5 (CHR).
 | Ed25519   | 256  | PEM     | Any        | ❌ **FAIL** | `unable to load key file (wrong format...)` |
 
 **CONSTRAINT:** Do NOT generate Ed25519 keys for RouterOS _private_ key imports. Use RSA 2048 or 4096.
+
+> **NOTE:** Ed25519 **IS** supported for [SSH User Login (Public Key)](ssh-public-key-import.md) (incoming), but NOT for Router-initiated connections (private keys).
 
 ### File Consumption Behavior
 
@@ -131,13 +135,15 @@ WORKAROUND: To create a scheduler owned by 'api-ssh', you MUST log in AS 'api-ss
 
 ### Anti-Patterns (LLM Traps)
 
-| ❌ Don't Assume             | ✅ Correct                                                              |
-| :-------------------------- | :---------------------------------------------------------------------- |
-| Ed25519 is better/supported | **RSA 2048+ PEM** is the ONLY working option.                           |
-| OpenSSH format works        | Must force **`-m PEM`** during generation.                              |
-| RSA 1024 is enough          | Minimum size is **2048 bits**.                                          |
-| File stays on disk          | File is **deleted** on success.                                         |
-| `/tool/fetch` supports keys | NO. `/tool fetch` does NOT use these keys. These are for `/system/ssh`. |
+| ❌ Don't Assume             | ✅ Correct                                                                    |
+| :-------------------------- | :---------------------------------------------------------------------------- |
+| Ed25519 is better/supported | **RSA 2048+ PEM** is the ONLY working option.                                 |
+| OpenSSH format works        | Must force **`-m PEM`** during generation.                                    |
+| RSA 1024 is enough          | Minimum size is **2048 bits**.                                                |
+| File stays on disk          | File is **deleted** on success.                                               |
+| `/tool/fetch` supports keys | NO. `/tool fetch` does NOT use these keys. These are for `/system/ssh`.       |
+| Generate keys on router     | IMPOSSIBLE. RouterOS cannot generate user SSH keys. Must generate externally. |
+| Use ECDSA/Ed25519 keys      | IMPOSSIBLE. Feature supports **RSA only**. All EC types fail.                 |
 
 ### Scope of Usage
 
