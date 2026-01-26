@@ -93,3 +93,8 @@ This index serves as a navigational guide for AI agents to accessing authoritati
 - **Link**: [insights/ssh-public-key-import.md](insights/ssh-public-key-import.md)
 - **Topics**: SSH user auth, public key import, Ed25519 support, key formats.
 - **Instruction**: Read this when automating user access or passwordless login TO the router.
+
+- **File**: `insights/ssh-automation-execution.md`
+- **Link**: [insights/ssh-automation-execution.md](insights/ssh-automation-execution.md)
+- **Topics**: `ssh-exec`, output capture, automation barriers (TOFU), scripting execution contexts.
+- **Instruction**: Read this when designing scripts that need to execute commands on remote routers via SSH.

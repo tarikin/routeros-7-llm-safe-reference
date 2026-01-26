@@ -59,6 +59,7 @@ Safe-mode deep dive with **50+ empirical tests** on CHR 7.21:
 - ✅ **PTY Discovery**: Safe-mode silently fails without `ssh -tt`
 - ✅ **SSH Insights**: Mapped **RSA-only** constraint for private keys (client) vs **Ed25519 support** for public keys (user auth)
 - ✅ **Automation scoping**: Validated strictly scoped user contexts for SSH key usage
+- ✅ **Execution Patterns**: Documented reliable methods for non-interactive SSH output capture (`:execute as-string`)
 
 ### December 2025
 
@@ -125,11 +126,12 @@ Follow the reference syntax exactly—no invented commands.
 
 Deep dives into specific RouterOS behaviors, established through rigorous testing:
 
-| Topic                                                                 | Description                                            |
-| :-------------------------------------------------------------------- | :----------------------------------------------------- |
-| [**ACME Client Behavior**](insights/acme-client-behavior.md)          | Renewal logic, auth caching, and scheduler constraints |
-| [**SSH Private Key Import**](insights/ssh-private-key-import.md)      | Key types (RSA only), PEM format, and import quirks    |
-| [**SSH Public Key Import (User)**](insights/ssh-public-key-import.md) | User login keys, Ed25519 support, and anti-patterns    |
+| Topic                                                                  | Description                                            |
+| :--------------------------------------------------------------------- | :----------------------------------------------------- |
+| [**ACME Client Behavior**](insights/acme-client-behavior.md)           | Renewal logic, auth caching, and scheduler constraints |
+| [**SSH Private Key Import**](insights/ssh-private-key-import.md)       | Key types (RSA only), PEM format, and import quirks    |
+| [**SSH Public Key Import (User)**](insights/ssh-public-key-import.md)  | User login keys, Ed25519 support, and anti-patterns    |
+| [**SSH Automation & Execution**](insights/ssh-automation-execution.md) | `ssh-exec` vs `ssh`, capture patterns, and TOFU traps  |
 
 ---
 
