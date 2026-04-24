@@ -724,3 +724,94 @@
 :local t [/log get $id time];
 :put [:typeof $t];  # => str (e.g. "2025-12-23 07:13:04")
 # Note: It is NOT time type!
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 68. /ip firewall ... find where <str-valued predicate> REQUIRES QUOTES      │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# In `find where` clauses, string/enum-valued predicate literals MUST be quoted
+# string-literals. Unquoted bare words parse as variable references and evaluate
+# to "nothing", producing a silent no-match (empty result). This is asymmetric
+# with the corresponding /add command which accepts unquoted values as a
+# convenience — so the same value works in `add` but fails in `find`.
+#
+# Verified on RouterOS 7.23rc2 (2026-04-24).
+
+# ✗ WRONG - unquoted protocol, port, action → silent zero-match
+# :local found [/ip firewall filter find where chain=input protocol=tcp dst-port=80 action=accept]
+# # => "" (empty), even when matching rules exist!
+
+# ✓ CORRECT - quote every string/enum literal in the `where` predicate
+:local found [/ip firewall filter find where chain=input protocol="tcp" dst-port="80" action="accept"]
+# => matches existing rules as expected.
+
+# Note: `chain=input` (without quotes) DOES work because `input` is a chain-name
+# symbol recognised by the parser. But `protocol=tcp`, `action=accept`,
+# `dst-port=80`, `src-port=443` etc. all need explicit quoting. When in doubt,
+# quote the literal: there is no downside.
+#
+# Symptoms when this bug hits:
+#   - Idempotent "install if missing" loops create duplicate rules on every run.
+#   - Scripts that update/disable a rule "by comment" silently do nothing.
+#   - Unit-test equality of a single found-rule collapses to the no-match case.
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 69. SEQUENTIAL [$fnA ...]; [$fnB ...] INSIDE A FUNCTION CAN RE-INVOKE fnA   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# Inside a `:global … do={ … }` function body, calling two global function
+# handles sequentially — [$fnA args]; [$fnB args] — can cause fnA to be
+# invoked a SECOND time alongside fnB. The spurious re-invocation fires real
+# side effects (logs, system changes) with the ORIGINAL arguments.
+#
+# Verified on RouterOS 7.23rc2 (2026-04-24). Root cause not confirmed at the
+# interpreter source level; hypothesis is an implicit "last-called-handle"
+# that gets re-invoked on the next `[$x …]` expression in the same scope.
+#
+# Does NOT reproduce:
+#   - At script top level (outside any function).
+#   - When the second call uses :if/:onerror gating (the `:if` body appears
+#     to break the chain trigger).
+#   - When one of the calls is a builtin (:log info …, :put …) rather than
+#     a `[$globalFn …]` invocation.
+
+# ✗ WRONG - inside a function body; fnA fires twice, the second time right
+#           after fnB logs its own message.
+# :global fnA do={ :log info "A"; :return "" }
+# :global fnB do={ :log info "B"; :return "" }
+# :global caller do={
+#   :global fnA; :global fnB
+#   [$fnA "first"]        # logs A (expected)
+#   [$fnB "second"]       # logs B (expected) AND fires A again (bug)
+#   :return ""
+# }
+
+# ✓ WORKAROUND 1 - gate the second call with :if on the first's boolean result
+:global fnA do={ :log info ("A:" . $1); :return true }
+:global fnB do={ :log info ("B:" . $1); :return true }
+:global callerOk do={
+  :global fnA; :global fnB
+  :if ([$fnA "first"]) do={ [$fnB "second"] }
+  :return ""
+}
+
+# ✓ WORKAROUND 2 - replace one of the calls with a builtin
+:global callerInline do={
+  :global fnA
+  [$fnA "first"]
+  :log info "B via builtin"    # no chain — no spurious re-invocation
+  :return ""
+}
+
+# ✓ WORKAROUND 3 - assignment form between the two calls
+:global callerAssign do={
+  :global fnA; :global fnB
+  :local r1 [$fnA "first"]
+  :if ($r1) do={ [$fnB "second"] }
+  :return ""
+}
+
+# Symptoms when this bug hits:
+#   - Log entries duplicated or appearing at unexpected points.
+#   - Side-effectful state (firewall rules toggled, services enabled/disabled)
+#     reverting or double-applying between expected lines of code.
+#   - Instrumented tracing reveals two invocations of fnA per single lexical
+#     call site — the second invocation happens AFTER fnB has started.
