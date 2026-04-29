@@ -106,27 +106,34 @@
 # atLeastOnce = 1 (executed once!)
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │                      6. :break/:continue - DO NOT EXIST!                    │
+# │                      6. :break / :continue - WORK ON 7.22+                  │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# CRITICAL: RouterOS does NOT have :break or :continue commands!
-# Attempting to use them results in: "bad command name break"
-
-# WORKAROUND - Use flag variables:
-:local exitLoop false;
-:for i from=1 to=100 do={
-  :if (!$exitLoop) do={
-    :if ($i = 10) do={ :set exitLoop true; };
-    # ... your code here (only runs if not exiting)
-  };
+# RULE 6.1: :break exits the innermost :for / :foreach / :while early
+:for i from=1 to=10 do={
+  :if ($i = 5) do={ :break; };
+  :put $i;                              # Prints 1,2,3,4
 };
 
-# WORKAROUND - Use :while with exit condition:
-:local searching true;
-:local idx 0;
-:while ($searching && $idx < [:len $arr]) do={
-  :if (($arr->$idx) = $target) do={ :set searching false; };
-  :set idx ($idx + 1);
+# RULE 6.2: :continue skips to the next iteration
+:for i from=1 to=5 do={
+  :if ($i = 3) do={ :continue; };
+  :put $i;                              # Prints 1,2,4,5
+};
+
+# RULE 6.3: Both work inside :foreach
+:local arr {10;20;30;40;50};
+:foreach v in=$arr do={
+  :if ($v > 30) do={ :break; };
+  :put $v;                              # Prints 10,20,30
+};
+
+# RULE 6.4: In nested loops, :break / :continue affect ONLY the innermost loop
+:for i from=1 to=2 do={
+  :for j from=1 to=3 do={
+    :if ($j = 2) do={ :break; };        # exits inner loop only
+    :put ($i . "," . $j);               # Prints 1,1 ; 2,1
+  };
 };
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -247,8 +254,8 @@
 # │ :foreach           │ k,v for dicts, empty array = zero iterations            │
 # │ :while             │ Pre-test, condition before execution                    │
 # │ :do while          │ Post-test, AT LEAST ONCE execution                      │
-# │ :break             │ DOES NOT EXIST! Use flag variables                      │
-# │ :continue          │ DOES NOT EXIST! Use flag variables                      │
+# │ :break             │ Exits :for/:foreach/:while early (7.22+)                │
+# │ :continue          │ Skips to next iteration (7.22+)                         │
 # │ :return            │ MUST have value, use "" for empty                       │
 # │ :error             │ Catchable exception                                     │
 # │ :quit              │ NOT catchable, terminates script                        │
@@ -259,7 +266,7 @@
 # ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ CRITICAL LLM PITFALLS                                                        │
 # ├──────────────────────────────────────────────────────────────────────────────┤
-# │ ✗ :break and :continue DO NOT EXIST                                          │
+# │ ✓ :break and :continue WORK on 7.22+ (innermost loop only)                   │
 # │ ✗ :elseif DOES NOT EXIST (use nested :if in else)                            │
 # │ ✗ switch/case DOES NOT EXIST                                                 │
 # │ ✗ goto DOES NOT EXIST                                                        │

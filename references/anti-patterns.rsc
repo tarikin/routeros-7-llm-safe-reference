@@ -289,20 +289,28 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 25. :break AND :continue DO NOT EXIST!                                      │
+# │ 25. :break AND :continue EXIST ON 7.22+                                     │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# ✗ WRONG - These commands do not exist:
-# :for i from=1 to=10 do={ :if ($i = 5) do={ :break; }; };
-# Result: "bad command name break"
+# Earlier reference releases listed these as non-existent. Per the 7.22
+# CHANGELOG: "console - added :continue and :break commands for various loops".
+# Verified live on 7.22.2 / 7.23rc2: :break exits :for / :foreach / :while
+# early; :continue skips to the next iteration. Both affect only the innermost
+# loop. See flow.rsc §6. On 7.21 and earlier the flag-variable workaround
+# below is still required.
 
-# ✓ CORRECT - Use flag variable workaround:
-:local exitLoop false;
+# ✓ CORRECT (7.22+) - native flow control:
 :for i from=1 to=10 do={
-  :if (!$exitLoop) do={
-    :if ($i = 5) do={ :set exitLoop true; };
-    # Your code here
-  };
+  :if ($i = 5) do={ :break; };          # exits at i=5; prints 1..4
+  :put $i;
 };
+
+# ✓ STILL REQUIRED on 7.21 and earlier - flag-variable workaround:
+# :local exitLoop false;
+# :for i from=1 to=10 do={
+#   :if (!$exitLoop) do={
+#     :if ($i = 5) do={ :set exitLoop true; };
+#   };
+# };
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 26. :elseif / elif / else if DOES NOT EXIST                                 │
@@ -746,13 +754,23 @@
 
 # Note: `chain=input` (without quotes) DOES work because `input` is a chain-name
 # symbol recognised by the parser. But `protocol=tcp`, `action=accept`,
-# `dst-port=80`, `src-port=443` etc. all need explicit quoting. When in doubt,
-# quote the literal: there is no downside.
+# `dst-port=80`, `src-port=443` etc. all need explicit quoting.
+#
+# CAVEAT — boolean predicates follow the OPPOSITE rule. Fields whose schema
+# type is `bool` (`dynamic`, `disabled`, `passthrough`, `log`, `invalid`, etc.)
+# accept ONLY bare `yes`/`no` in `find where`; quoting them silently no-matches.
+# Verified live 7.23rc2:
+#   /ip firewall address-list find where list=blocklist dynamic="yes"   => 0
+#   /ip firewall address-list find where list=blocklist dynamic=yes     => N
+# So "when in doubt, quote" is true ONLY for string/enum predicates. For
+# boolean predicates the safe form is the bare word.
 #
 # Symptoms when this bug hits:
 #   - Idempotent "install if missing" loops create duplicate rules on every run.
 #   - Scripts that update/disable a rule "by comment" silently do nothing.
 #   - Unit-test equality of a single found-rule collapses to the no-match case.
+#   - A diff-sync runtime that filters by `dynamic="yes"` deletes nothing on
+#     re-runs and re-adds every entry, exploding adds/errors counts.
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 69. SEQUENTIAL [$fnA ...]; [$fnB ...] INSIDE A FUNCTION CAN RE-INVOKE fnA   │
