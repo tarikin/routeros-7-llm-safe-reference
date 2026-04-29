@@ -12,3 +12,7 @@ node_modules/
 
 # Ignore test files
 tests/*
+
+# LLM agent config (local only)
+AGENTS.md
+CLAUDE.md
