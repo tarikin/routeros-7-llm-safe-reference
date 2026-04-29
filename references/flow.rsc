@@ -1,5 +1,5 @@
 # RouterOS 7 Flow Control Reference
-# VERIFIED on RouterOS 7.21+
+# VERIFIED on RouterOS 7.21+ baseline; 7.22+ additions marked inline
 # This document contains ONLY empirically verified behavior
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -157,7 +157,7 @@
 :local x [:if ($cond) do={ :return "a"; } else={ :return "b"; }];
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │                      8. :error / :quit                                      │
+# │                      8. :error / :quit / :exit                              │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
 # RULE 8.1: :error throws catchable exception
@@ -166,12 +166,26 @@
 # RULE 8.2: Error message includes source info
 # e.g., "my-message (:error; line 18)"
 
-# RULE 8.3: :quit terminates script (NOT catchable!)
-# :quit;                                # Script stops completely
+# RULE 8.3: :quit terminates script (NOT catchable, prints "interrupted" to stdout)
+# :quit;                                # Script stops; "interrupted" appears on stdout
 
-# RULE 8.4: :error vs :quit
-# :error = catchable with :onerror
-# :quit  = NOT catchable, terminates immediately
+# RULE 8.4: :exit terminates script (NOT catchable, SILENT) — 7.22+
+# Same blast radius as :quit (whole script), no "interrupted" output, takes NO argument.
+# Parse error: :exit "msg" / :exit 1   (must be bare :exit;)
+# :onerror cannot catch :exit (it is not an error condition).
+# :exit inside :foreach / :while terminates the WHOLE script — use :break for loop-only.
+# :exit inside :execute child does NOT kill the parent.
+# :exit;                                # Script stops; nothing printed
+
+# RULE 8.5: termination primitives compared
+# ┌──────────┬──────────────────────────────────────────────────────────────────┐
+# │ :error   │ Catchable via :onerror; raises a runtime error condition         │
+# │ :quit    │ Terminates script; prints "interrupted"; not catchable           │
+# │ :exit    │ 7.22+; terminates script silently; not catchable; no argument    │
+# │ :return  │ Exits current function only, with required value                 │
+# │ :break   │ 7.22+; exits innermost :for/:foreach/:while only                 │
+# │ :continue│ 7.22+; skips to next loop iteration                              │
+# └──────────┴──────────────────────────────────────────────────────────────────┘
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      9. :onerror ERROR HANDLING                             │
@@ -258,7 +272,8 @@
 # │ :continue          │ Skips to next iteration (7.22+)                         │
 # │ :return            │ MUST have value, use "" for empty                       │
 # │ :error             │ Catchable exception                                     │
-# │ :quit              │ NOT catchable, terminates script                        │
+# │ :quit              │ NOT catchable, terminates script (prints "interrupted") │
+# │ :exit              │ NOT catchable, terminates script silently (7.22+)       │
 # │ :onerror           │ Returns bool, catches runtime errors only               │
 # │ :retry             │ Must be inside :onerror block                           │
 # └────────────────────┴─────────────────────────────────────────────────────────┘
@@ -275,9 +290,11 @@
 # │ ✗ Short-circuit evaluation DOES NOT WORK                                     │
 # │ ✗ Syntax errors cannot be caught by :onerror                                 │
 # │ ✗ :quit is NOT catchable                                                     │
+# │ ✗ :exit is NOT catchable, NOT a loop primitive — use :break for loop-only    │
+# │ ✗ :exit accepts NO argument; :exit "msg" / :exit 1 are parse errors          │
 # │ ✗ :for with from>to STILL EXECUTES (wraps!)                                  │
 # └──────────────────────────────────────────────────────────────────────────────┘
 #
 # ══════════════════════════════════════════════════════════════════════════════
-# END OF VERIFIED REFERENCE - RouterOS 7.21+
+# END OF VERIFIED REFERENCE - RouterOS 7.21+ baseline; 7.22+ additions inline
 # ══════════════════════════════════════════════════════════════════════════════

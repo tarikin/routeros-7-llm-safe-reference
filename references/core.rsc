@@ -17,7 +17,7 @@
 :put ([:tonum "123"]); ; # => 123 (str->num)
 :put ([:tostr 123]); ; # => "123" (num->str)
 :put ([:toip "192.168.1.1"]); ; # => 192.168.1.1 (str->ip)
-:put ([:tobool "yes"]); ; # => true (str->bool)
+:put ([:tobool "yes"]); ; # => true on 7.22+; nil on <7.22 (case-strict, exact match)
 :put ([:toarray "a,b,c" delimiter=","]); ; # => {"a";"b";"c"}
 :put ([:pick "abc" 1 2]); ; # => "b" (substring)
 :put ([:find "abc" "b"]); ; # => 1 (position)

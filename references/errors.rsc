@@ -237,7 +237,8 @@
 # │ :onerror           │ Returns bool, error var = string, catches runtime only  │
 # │ :do on-error       │ Alternative syntax, NO error variable                   │
 # │ :error             │ Throw catchable exception                               │
-# │ :quit              │ NOT catchable, terminates script                        │
+# │ :quit              │ NOT catchable, terminates script (prints "interrupted") │
+# │ :exit              │ 7.22+, NOT catchable, terminates script silently        │
 # │ :retry             │ Inside :onerror, max=0 = no execution                   │
 # │ :execute           │ Errors ISOLATED, async by default                       │
 # └────────────────────┴─────────────────────────────────────────────────────────┘
@@ -247,7 +248,8 @@
 # ├──────────────────────────────────────────────────────────────────────────────┤
 # │ ✗ :return; without value HANGS ("value:" prompt)                             │
 # │ ✗ :execute errors are ISOLATED - parent cannot catch                         │
-# │ ✗ :quit is NOT catchable                                                     │
+# │ ✗ :quit is NOT catchable (and prints "interrupted")                          │
+# │ ✗ :exit is NOT catchable, NOT a loop primitive (7.22+, silent)               │
 # │ ✗ Syntax errors cannot be caught by :onerror                                 │
 # │ ✗ Array out-of-bounds returns nil, NOT an error                              │
 # │ ✗ Dict key miss returns "nothing", NOT an error                              │

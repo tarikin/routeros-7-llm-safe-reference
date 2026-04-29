@@ -207,14 +207,29 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 17. :tobool "yes" RETURNS nil, NOT true                                     │
+# │ 17. :tobool BEHAVIOR DIFFERS BY VERSION (7.22+ accepts strings)             │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# ✗ WRONG:
-# :if ([:tobool "yes"]) do={ :put "works"; }  # Never executes!
+# ✗ WRONG ASSUMPTION (pre-7.22 stale advice):
+# "[:tobool \"yes\"] returns nil; use only numeric input"
+# That was true on <7.22 ONLY. On 7.22+ strings DO coerce, but with strict rules.
+#
+# ✗ WRONG (7.22+) — assuming string casting is forgiving:
+# :if ([:tobool "YES"]) do={ ... }     # false (case-sensitive!)
+# :if ([:tobool " yes"]) do={ ... }    # false (whitespace not trimmed!)
+# :if ([:tobool "y"]) do={ ... }       # false (no short forms!)
+# :if ([:tobool "on"]) do={ ... }      # false (not a recognized token!)
 
-# ✓ CORRECT - Use numeric input:
-:put [:tobool 1];                     # => true
-:put [:tobool 0];                     # => false
+# ✓ CORRECT — version-portable input handling
+:put [:tobool 1];                     # both versions: true
+:put [:tobool 0];                     # both versions: false
+# 7.22+ accepts EXACTLY these strings: "yes" "no" "true" "false" "1" "0"
+# All others coerce to false (NOT nil) on 7.22+; pre-7.22 they returned nil.
+:put [:tobool "yes"];                 # 7.22+: true   |  <7.22: nil
+# To support both versions, normalize before casting:
+:local s "Yes"; :set s [:tolower $s];
+:put [:tobool $s];                    # 7.22+: true
+# CRITICAL: time is the ONLY type that returns nil on 7.22+
+:put [:typeof [:tobool 1s]];          # nil — use [:tonsec $t] > 0 instead
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 18. :tonum DOES NOT SUPPORT FLOATS OR WHITESPACE                            │
@@ -833,3 +848,107 @@
 #     reverting or double-applying between expected lines of code.
 #   - Instrumented tracing reveals two invocations of fnA per single lexical
 #     call site — the second invocation happens AFTER fnB has started.
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 70. :exit IS NOT :break — TERMINATES THE WHOLE SCRIPT (7.22+, silent)       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# `:exit` was added in 7.22. It looks like a loop-control primitive, but it
+# terminates the ENTIRE script — same blast radius as `:quit`. The only
+# differences from `:quit` are: it's silent (no "interrupted" output) and
+# it accepts NO argument (`:exit "msg"` / `:exit 1` are parse errors).
+# `:onerror` cannot catch `:exit` (it is not an error condition).
+
+# ✗ WRONG — using :exit to break out of a loop:
+# :foreach i in={1;2;3;4} do={
+#   :if ($i = 2) do={ :exit }     # ABORTS the whole script, not the loop!
+#   :put $i
+# }
+# :put "after-loop";              # NEVER reached
+
+# ✓ CORRECT — :break for loop, :exit only when you mean "stop the script":
+:foreach i in={1;2;3;4} do={
+  :if ($i = 2) do={ :break }      # exits innermost loop only (7.22+)
+  :put $i;                        # prints 1
+}
+:put "after-loop";                # reached
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 71. FN ARG SILENTLY CAPTURED FROM :global ON 7.22+ WHEN COLLISION EXISTS    │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# 7.22 added: when a function references `$x` and `x` is neither an arg nor a
+# `:local`, the lookup falls back to `:global x`. Pre-7.22 this returned empty.
+# RISK: if your function expects an arg whose name happens to match an
+# existing :global, forgetting to pass the arg silently captures the global.
+
+# ✗ WRONG — name collision with a pre-existing :global:
+# :global state "production"        # set elsewhere
+# :global doWork do={ :put $state }  # author meant arg "state"
+# [$doWork]                          # 7.22+: prints "production" (stale capture!)
+#                                    # <7.22: prints empty (caller noticed bug)
+
+# ✓ CORRECT — pass args explicitly, OR rename to avoid global namespace:
+:global state "production"
+:global doWork do={
+  :if ([:typeof $arg] = "nothing") do={ :error "state arg required" }
+  :put $arg
+}
+[$doWork arg="staging"];           # explicit; never depends on fallback
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 72. WRITE TO :global FROM INSIDE FN STILL NEEDS :global X; RE-DECL          │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# 7.22 relaxed READ access (auto-fallback to :global). It did NOT relax WRITE.
+# `:set X` inside a function where `X` was not declared as :local or :global
+# is a PARSE-time error on every version, including 7.22+.
+
+# ✗ WRONG — implicit :set on a global:
+# :global counter 0
+# :global bump do={ :set counter ($counter + 1) }    # parse error: syntax error
+# [$bump]
+
+# ✓ CORRECT — explicit :global X; before :set:
+:global counter 0
+:global bump do={
+  :global counter;                 # required for :set, even on 7.22+
+  :set counter ($counter + 1);
+}
+[$bump];
+:put $counter;                     # => 1
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 73. id < "*FF" ERRORS ON 7.22+ — ID ORDERING DOES NOT COERCE TO STRING      │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# 7.22+ added <, >, <=, >= for `id` values. Equality (`=`) coerces str<->id;
+# ordering does NOT — comparing an `id` against a `str` raises a runtime error.
+# Strings still don't support `<`/`>` either (existing rule).
+
+# ✗ WRONG — relying on coercion for ordering:
+# :local first ([/interface find]->0)
+# :put ($first < "*FFFFFFFF")        # ERROR: cannot compare if id is less than string
+
+# ✓ CORRECT — both sides must be id (or both num/ip):
+:local ids [/interface find]
+:local a ($ids->0); :local b ($ids->1);
+:put ($a < $b);                    # 7.22+: bool — both operands are id
+# To compare against a literal id, write the *XX form WITHOUT quotes:
+# (assumes *1 exists)
+# :put ($a < *FFFFFFFF);             # OK — both id-typed
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 74. :tobool ON time TYPE RETURNS nil (THE ONLY EXCEPTION ON 7.22+)          │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# 7.22 made :tobool universal — except for `time`. Every other type coerces
+# (str/num/bool/ip/ip6/id/array/nil all return bool). Only `time` returns nil.
+# Code that uses :tobool for a "is this duration set?" check will silently
+# fail because nil is falsy when concatenated but is NOT the bool false.
+
+# ✗ WRONG — checking a time value with :tobool:
+# :local duration 5s
+# :if ([:tobool $duration]) do={ ... }   # 7.22+: nil — :if rejects non-bool!
+#                                        # raises "conditional is not boolean"
+
+# ✓ CORRECT — coerce time to nanoseconds first:
+:local duration 5s
+:if ([:tonsec $duration] > 0) do={ :put "duration set"; }
+# Or compare against zero directly:
+:if ($duration > 0s) do={ :put "duration set"; }

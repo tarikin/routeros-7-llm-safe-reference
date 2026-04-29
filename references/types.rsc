@@ -1,5 +1,5 @@
 # RouterOS 7 Type System Reference
-# VERIFIED on RouterOS 7.21+
+# VERIFIED on RouterOS 7.21+ baseline; 7.22+ additions marked inline
 # This document contains ONLY empirically verified behavior
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -68,12 +68,32 @@
 :put [:toip "not-ip"];                  # => nil
 :put [:toip "256.1.1.1"];               # => nil (invalid octet)
 
-# RULE 2.4: :tobool - ONLY works with numbers, NOT strings!
-:put [:tobool 1];                       # => true
-:put [:tobool 0];                       # => false (presumably)
-:put [:tobool "yes"];                   # => nil (NOT true!)
-:put [:tobool "true"];                  # => nil (NOT true!)
-:put [:tobool "no"];                    # => nil
+# RULE 2.4: :tobool - behavior CHANGED in 7.22+
+# Pre-7.22: accepts num only; any string returns nil.
+# 7.22+:    accepts str / num / bool / ip / ip6 / id / array; only `time` returns nil.
+:put [:tobool 1];                       # both: true
+:put [:tobool 0];                       # both: false
+# 7.22+ string casting (case-sensitive, exact match — NO whitespace tolerance):
+:put [:tobool "yes"];                   # 7.22+: true   |  <7.22: nil
+:put [:tobool "true"];                  # 7.22+: true   |  <7.22: nil
+:put [:tobool "1"];                     # 7.22+: true   |  <7.22: nil
+:put [:tobool "no"];                    # 7.22+: false  |  <7.22: nil
+:put [:tobool "false"];                 # 7.22+: false  |  <7.22: nil
+:put [:tobool "0"];                     # 7.22+: false  |  <7.22: nil
+# 7.22+ ALL OTHER strings -> false (NOT nil). Case-sensitive, no synonyms:
+:put [:tobool "YES"];                   # 7.22+: false  (NOT true — case strict)
+:put [:tobool "True"];                  # 7.22+: false  (case strict)
+:put [:tobool "on"];                    # 7.22+: false  (NOT a recognized synonym)
+:put [:tobool "y"];                     # 7.22+: false  (no short forms)
+:put [:tobool " yes"];                  # 7.22+: false  (whitespace strict)
+:put [:tobool "garbage"];               # 7.22+: false
+# 7.22+ non-string types (everything coerces except time):
+:put [:tobool 192.168.1.1];             # 7.22+: true   (non-zero ip)
+:put [:tobool 0.0.0.0];                 # 7.22+: false
+:put [:tobool ::1];                     # 7.22+: true
+:put [:tobool ({})];                    # 7.22+: false  (empty array)
+:put [:tobool ({1;2})];                 # 7.22+: true
+:put [:typeof [:tobool 1s]];            # nil — time is the ONLY non-coercible type
 
 # RULE 2.5: :toarray - splits strings by delimiter
 :put [:len [:toarray "a,b,c" delimiter=","]]; # => 3
@@ -194,16 +214,53 @@
 :put (10.0.0.1 in 192.168.0.0/16);      # => false
 :put (192.168.1.0/24 in 192.168.0.0/16); # => true (prefix in prefix)
 
+# RULE 6.6: ID values support full ordering on 7.22+
+# Pre-7.22: id supports = and != only; <, >, <=, >= raise an error.
+# 7.22+:    id supports <, >, <=, >= ordered by NUMERIC (hex) value of the *XX literal,
+#           NOT by find-result order. Cross-namespace IDs compare in a single hex space:
+#           interface *2 < route *80000001 is true.
+:local ids [/interface find]
+:local a ($ids->0); :local b ($ids->1)
+:put ($a = $a);                         # both: true
+:put ($a != $b);                        # both: true
+:put ($a < $b);                         # 7.22+: bool. <7.22: error
+:put ($a >= $a);                        # 7.22+: true (non-strict reflexive)
+# Asymmetry — equality coerces str<->id, ordering does NOT:
+:put ($a = [:tostr $a]);                # 7.22+: true (str coerced to id for equality)
+# :put ($a < "*FFFFFFFF");              # ERROR: cannot compare if id is less than string
+
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      7. NETWORK TYPE OPERATIONS                             │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# RULE 7.1: IP bitwise operations work
-:put (192.168.1.100 & 255.255.255.0);   # => 192.168.1.0 (type ip)
-:put (192.168.1.0 | 0.0.0.255);         # => 192.168.1.255 (type ip)
-:put (192.168.1.1 ^ 0.0.0.255);         # => 192.168.1.254 (type ip)
+# RULE 7.1: IPv4 bitwise operations work — full set: & | ^ ~ << >>
+:put (192.168.1.100 & 255.255.255.0);   # => 192.168.1.0   (typeof ip)
+:put (192.168.1.0 | 0.0.0.255);         # => 192.168.1.255 (typeof ip)
+:put (192.168.1.1 ^ 0.0.0.255);         # => 192.168.1.254 (typeof ip)
+:put (~192.168.1.1);                    # => 63.87.254.254
+:put (192.168.1.1 << 1);                # => 129.80.2.2
+:put (192.168.1.1 >> 8);                # => 0.192.168.1
+# /24 mask via shift:
+:put ((192.168.1.45 >> 8) << 8);        # => 192.168.1.0
 
-# RULE 7.2: IP + number arithmetic WORKS!
+# RULE 7.2: IPv6 bitwise operations — << and >> added in 7.22+; & | ^ ~ also work
+:put (::1 << 4);                        # => ::10           (typeof ip6)
+:put (ffff:: >> 16);                    # => 0:ffff::
+:put (::ff & ::1);                      # => ::1
+:put (::1 | ::ff00);                    # => ::ff01
+:put (::1 ^ ::ff);                      # => ::fe
+:put (~::1);                            # => ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffe
+# /64 prefix via shift idiom:
+:put ((2001:db8:abcd:1234::1 >> 64) << 64);  # => 2001:db8:abcd:1234::
+
+# RULE 7.3: IPv6 display quirk — lower 32 bits may print as IPv4-mapped form
+:put (::1 << 16);                       # => ::0.1.0.0   (which is ::100:0)
+
+# RULE 7.4: Shift overflow — standard wraparound, top/bottom bits discarded
+:put (8000:: << 1);                     # => :: (high bit shifted out of 128-bit space)
+:put (::1 << 128);                      # => :: (full-width shift zeroes the value)
+
+# RULE 7.5: IP + number arithmetic WORKS!
 :put (192.168.1.1 + 1);                 # => 192.168.1.2
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -248,7 +305,7 @@
 # │ :tonum           │ Integers ONLY. "23.8"→nil, " 100 "→nil, true→nil          │
 # │ :tostr           │ Universal, always works                                   │
 # │ :toip            │ Also extracts IP from prefix                              │
-# │ :tobool          │ Numbers only! "yes"→nil, "true"→nil                       │
+# │ :tobool          │ 7.22+: str/all types coerce; <7.22: num only. time→nil    │
 # │ :toarray         │ Uses delimiter=                                           │
 # │ :totime          │ Parse time strings                                        │
 # │ :toip6           │ Parse IPv6                                                │
@@ -259,16 +316,21 @@
 # ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ LLM PITFALLS                                                                 │
 # ├──────────────────────────────────────────────────────────────────────────────┤
-# │ ✗ [:tobool "yes"] returns nil, NOT true                                      │
+# │ ✗ [:tobool "yes"] returns nil on <7.22; bool true on 7.22+ (case-strict)     │
+# │ ✗ [:tobool "YES"] / "True" / " yes" / "on" / "y" all return false on 7.22+   │
+# │ ✗ [:tobool 1s] returns nil — time is the ONLY non-coercible type on 7.22+    │
 # │ ✗ [:tonum "23.8"] returns nil (no floats)                                    │
-# │ ✗ [:typeof function] returns "array" (standard) or "code" (parsed)             │
+# │ ✗ [:typeof function] returns "array" (standard) or "code" (parsed)           │
 # │ ✗ [:typeof []] returns "nil", NOT "array"                                    │
 # │ ✗ "abc" < "xyz" is ERROR (string comparison only = and !=)                   │
+# │ ✗ id < "string" ERRORS (7.22+ ordering not coercive); id = "string" works    │
 # │ ✗ Integer overflow wraps silently to negative                                │
 # │ ✓ "5" + 10 = 15 (string auto-coerced in arithmetic)                          │
 # │ ✓ 192.168.1.1 + 1 = 192.168.1.2 (IP arithmetic works!)                       │
+# │ ✓ ::1 << 4 = ::10 (IPv6 bit-shift on 7.22+; full bitwise set: & | ^ ~ << >>) │
+# │ ✓ ($idA < $idB) on 7.22+ = bool, ordered by hex value of *XX literal         │
 # └──────────────────────────────────────────────────────────────────────────────┘
 #
 # ══════════════════════════════════════════════════════════════════════════════
-# END OF VERIFIED REFERENCE - RouterOS 7.21+
+# END OF VERIFIED REFERENCE - RouterOS 7.21+ baseline; 7.22+ additions inline
 # ══════════════════════════════════════════════════════════════════════════════

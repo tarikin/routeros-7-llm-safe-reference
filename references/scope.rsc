@@ -1,5 +1,5 @@
 # RouterOS 7 Variable Scoping Reference
-# VERIFIED on RouterOS 7.21+
+# VERIFIED on RouterOS 7.21+ baseline; 7.22+ additions marked inline
 # This document contains ONLY empirically verified behavior
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -88,14 +88,47 @@
 :local outer "exists";
 # :global fn do={ :put $outer; };  # PARSE ERROR: outer not in function scope
 
-# RULE 3.2: Functions access globals via re-declaration
+# RULE 3.2: Function access to :global — read vs write asymmetry
+# READ on 7.22+:   $gName auto-falls-back to :global when arg/local lookup fails.
+# READ on <7.22:   inner :global gName; re-declaration was REQUIRED for read access.
+# WRITE on ALL:    :set gName inside fn STILL requires :global gName; first
+#                  (parse error otherwise — applies to both 7.22+ and <7.22).
 :global gFuncTest "start";
+:global fnReadGlobal do={
+  :put $gFuncTest;                # 7.22+: works (auto-fallback). <7.22: empty.
+};
 :global fnModGlobal do={
-  :global gFuncTest;              # Must re-declare global inside function
+  :global gFuncTest;              # MUST re-declare for :set, on every version
   :set gFuncTest "modified";
 };
-$fnModGlobal;
-:put $gFuncTest;    # => "modified"
+[$fnReadGlobal];
+[$fnModGlobal];
+:put $gFuncTest;                  # => "modified"
+
+# RULE 3.2a: 7.22+ fallback is :global ONLY — caller's :local stays invisible
+:global testFallback "from-global";
+:global fnSee do={ :put $testFallback; }
+:local outer do={
+  :local testFallback "outer-local";
+  [$fnSee];                       # 7.22+ prints "from-global", NOT "outer-local"
+}
+[$outer];
+
+# RULE 3.2b: Arg-vs-global collision — arg passed wins, arg missing -> global
+:global priorityVar "from-global";
+:global fnPick do={ :put $priorityVar; }
+[$fnPick];                          # 7.22+: "from-global" (silent fallback!)
+[$fnPick priorityVar="from-arg"];   # both: "from-arg" (arg overrides)
+# RISK: a function arg whose name collides with a :global is silently captured
+#       on 7.22+ when caller forgets to pass it. Pass args explicitly when
+#       correctness depends on the arg, or use a name that no :global uses.
+
+# RULE 3.2c: function literal stored in :local is NOT visible across functions
+# Caller-local `:local fInner do={...}` is invisible inside another function.
+# To call from a nested fn, store as :global so the read-fallback can find it.
+:global fSharedG do={ :put "shared"; };
+:local fOuter do={ [$fSharedG]; };    # works on 7.22+ via global fallback
+[$fOuter];
 
 # RULE 3.3: Function parameters are $1, $2, etc.
 :global fnParam do={ :put ("param:" . $1); };
@@ -356,8 +389,9 @@ $fnA; $fnB;
 # │ Shadowing                    │ Inner overrides outer; outer restores on exit │
 # │ Global transcendence         │ :global visible everywhere (must re-declare)  │
 # │ :set binding                 │ Modifies innermost declaration                │
-# │ Function isolation           │ Functions cannot access outer :local (no closure) │
-# │ Global in function           │ Must :global inside function to access        │
+# │ Function isolation           │ Functions cannot access caller's :local       │
+# │ Global READ in fn            │ 7.22+: auto-fallback. <7.22: needs :global X; │
+# │ Global WRITE in fn           │ All versions: needs :global X; before :set X  │
 # │ Loop iterator                │ NOT accessible after loop ends                │
 # │ Loop/if body locals          │ NOT accessible after block exits              │
 # │ Outer mutation in block      │ Modifications to outer :local persist         │
@@ -372,5 +406,5 @@ $fnA; $fnB;
 # └──────────────────────────────┴───────────────────────────────────────────────┘
 #
 # ══════════════════════════════════════════════════════════════════════════════
-# END OF VERIFIED REFERENCE - RouterOS 7.21+
+# END OF VERIFIED REFERENCE - RouterOS 7.21+ baseline; 7.22+ additions inline
 # ══════════════════════════════════════════════════════════════════════════════
