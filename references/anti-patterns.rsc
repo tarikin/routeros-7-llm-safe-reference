@@ -168,7 +168,7 @@
 :put ("Text " . $"my-var" . " text");
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 13. :execute SOURCE FORMS — positional / script= / script={...} — see #6   │
+# │ 13. :execute SOURCE FORMS — positional / script= / script={...} — see #6    │
 # └─────────────────────────────────────────────────────────────────────────────┘
 # All three forms parse + execute on 7.23rc2 (REF-AUDIT-EXEC-SCRIPT-PARAM-ASYM
 # 2026-04-30):
