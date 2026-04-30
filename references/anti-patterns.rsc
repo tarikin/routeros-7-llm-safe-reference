@@ -1570,3 +1570,120 @@
 }
 /system script run inner;
 
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 103. SAFE-MODE DOES NOT ISOLATE CONCURRENT SESSIONS                         │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Safe-mode provides ROLLBACK, not transaction isolation. A concurrent SSH or
+# scripted session sees session-A's IN-FLIGHT uncommitted config additions,
+# deletions, and modifications IMMEDIATELY — no read isolation. The "enabled"
+# flag is global; only "current" is per-session. Multi-deploy scripts that
+# trust safe-mode as a coordination primitive will observe and act on
+# uncommitted state from a peer session.
+# REF-AUDIT-SM-NO-ISOLATION-MULTISESSION 2026-04-30 7.23rc2.
+# Cross-link: #104 (same-user steal), #7 (in-file isolation anti-pattern).
+# ✗ WRONG — trusting safe-mode for cross-process atomicity:
+# # session A:
+# /safe-mode take; /ip firewall filter add chain=input action=drop ...
+# # session B (parallel, no take):
+# :put [/ip firewall filter find]   # SEES A's pending drop rule!
+# ✓ CORRECT — serialize external orchestration; do NOT assume isolation:
+# # at orchestrator: file-lock or scheduler queue, single-deployer script
+# # inside the script: standard /safe-mode take + explicit release pattern
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 104. SAME-USER 2ND take STEALS OWNERSHIP AND COMMITS PRIOR PENDING TX       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# CRITICAL on 7.23rc2. When session A holds safe-mode and a SAME-USER session
+# B calls /safe-mode take, B's take SUCCEEDS (returns bool:true), B becomes
+# the new owner, AND A's pending changes are COMMITTED to the configuration
+# rather than aborted. B then begins a fresh transaction; B's auto-unroll on
+# script-end rolls back B's transaction only. Broken mutex semantics — DO
+# NOT rely on safe-mode for cross-process exclusivity.
+# REF-AUDIT-SM-SAME-USER-CONTENTION 2026-04-30 7.23rc2.
+# Cross-link: #103 (no isolation), #100 / #101 / #102 (other safe-mode traps).
+# ✗ WRONG — assuming `take` blocks contending sessions:
+# # session A:
+# /safe-mode take; /ip firewall filter add chain=input action=accept comment="A";
+# :delay 30s; /safe-mode unroll;
+# # session B (parallel, same user):
+# /safe-mode take;   # NO ERROR — succeeds, A's "A" rule now COMMITTED
+# ✓ CORRECT — orchestrate exclusivity at a higher layer:
+# # use a host-side flock(1) / scheduler queue / single-deployer pattern
+# # never assume safe-mode protects against concurrent operators
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 105. CAUGHT :error DOES NOT TRIGGER SAFE-MODE AUTO-UNROLL                   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# The 7.18+ safe-mode handler fires only on UNCAUGHT :error (or :exit, or
+# clean script-end without release). When :error is caught by :onerror or
+# :do {} on-error={}, the script CONTINUES — handler does NOT fire, the
+# safe-mode session stays enabled=true / current=true, and pending changes
+# remain LIVE inside the catch block. LLMs that wrap :error in :onerror
+# expecting automatic rollback will leak partial-state changes.
+# REF-AUDIT-SM-ERROR-CAUGHT-PERSIST 2026-04-30 7.23rc2.
+# Cross-link: #100 (on-error=release no-op), #101 (release-on-inactive non-catch).
+# ✗ WRONG — assuming caught :error triggers rollback:
+# :onerror e in={
+#   /safe-mode take;
+#   /ip firewall filter add chain=input action=drop comment="partial";
+#   :error "abort";
+# } do={ :put "caught: $e"; }
+# # rule still PRESENT here; safe-mode still HELD
+# ✓ CORRECT — explicit /safe-mode unroll inside the catch:
+:onerror e in={
+  /safe-mode take;
+  /ip firewall filter add chain=input action=drop comment="partial";
+  :error "abort";
+} do={
+  :put "caught: $e";
+  /safe-mode unroll;       # explicit rollback inside catch
+}
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 106. /system script run INHERITS OUTER SAFE-MODE TX (INNER work erased)     │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# /system script run does NOT spawn its own safe-mode transaction. Inner
+# scripts execute in the CALLER's safe-mode session. If the outer caller
+# ends without /safe-mode release, the outer's auto-unroll silently rolls
+# back the inner script's "successful" config changes. Inner scripts cannot
+# self-commit — they must either explicitly release inside (which steals the
+# outer's transaction) or be designed transaction-aware with the outer
+# responsible for commit.
+# REF-AUDIT-SM-COUPLING-ROLLBACK-SCOPE / REF-AUDIT-SM-SCRIPT-RUN-INHERITS
+# 2026-04-30 7.23rc2.
+# Cross-link: #102 (script-run boundary), #105 (caught-error persist).
+# ✗ WRONG — assuming inner script is independent:
+# /system script add name="inner" source={
+#   /ip firewall filter add chain=input action=accept comment="inner-rule";
+# }
+# /safe-mode take;
+# /system script run inner;
+# # outer ends without release → inner-rule WIPED by outer's auto-unroll
+# ✓ CORRECT — outer owns the commit boundary:
+/safe-mode take;
+/system script run inner;
+/safe-mode release;        # outer commits, inner's changes preserved
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 107. /import from-line=N SILENTLY DISABLED WITHOUT verbose=yes              │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Bonus 7.23rc2 finding (Sprint 7). When /import is invoked with from-line=N
+# but WITHOUT verbose=yes (or verbose=progress), RouterOS emits a non-fatal
+# warning "Warning: from-line parameter does not work for non-verbose import"
+# and silently runs the import from line 1 — ignoring from-line entirely.
+# Partial-resume scripts that rely on from-line to skip already-applied
+# config will RE-APPLY the entire file. The warning is easy to miss in
+# non-interactive deploys.
+# REF-AUDIT-SM-IMPORT-FROMLINE-PAST-EOF 2026-04-30 7.23rc2.
+# Cross-link: #97 (dry-run without verbose), #98 (dry-run=yes).
+# ✗ WRONG — relying on from-line without verbose:
+# /import file-name="config.rsc" from-line=42
+# # → warning printed, import runs from line 1, NOT line 42
+# ✓ CORRECT — pair from-line with verbose=yes (or verbose=progress):
+/import file-name="config.rsc" verbose=yes from-line=42;
+
