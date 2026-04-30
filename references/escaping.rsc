@@ -98,17 +98,29 @@
 # │                      5. :EXECUTE NESTED STRINGS                             │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# RULE 5.1: Basic :execute syntax (positional, not script=)
-:execute ":put \"hello\"";            # Correct
-# :execute script=":put \"hello\"";   # WRONG - no script= parameter
+# RULE 5.1: :execute accepts THREE source forms; asymmetry is observability
+#   (a) :execute "<source-string>"        — positional, fire-and-forget
+#   (b) :execute script="<source-string>" — named, fire-and-forget
+#   (c) :execute script={ <code-block> }  — block form, fire-and-forget
+# All three parse and execute on 7.23rc2. None of them deliver the inner
+# :put output back to the caller — the executed source runs as a detached
+# job whose stdout is NOT propagated to the parent script. To capture
+# output, use the as-string variant in RULE 5.3.
+# VERIFIED REF-AUDIT-EXEC-SCRIPT-PARAM-ASYM 2026-04-30 7.23rc2
+:execute ":put \"hello\"";              # (a) positional
+:execute script=":put \"hello\"";       # (b) named — also valid; no observable output
+:execute script={ :put "hello" };       # (c) block — also valid; no observable output
 
-# RULE 5.2: :execute is ASYNC - use :delay for output timing
+# RULE 5.2: :execute is ASYNC — :delay buys time for the detached job to run
+# but does NOT capture its output (stdout is detached, not pipelined).
 :execute ":put \"async\"";
-:delay 500ms;                         # Wait for output
+:delay 500ms;                           # Wait for the detached job (output still not visible to caller)
 
-# RULE 5.3: Capture output with as-string
+# RULE 5.3: Capture stdout with as-string (the ONLY observability path)
+# Returns type str: bytes from the inner :put calls, each ending in LF.
 :local result [:execute script=":put \"captured\"" as-string];
-:put $result;                         # => "captured\n"
+:put $result;                           # => captured\n  (LF after each :put)
+# VERIFIED REF-AUDIT-EXEC-AS-STRING-OUTPUT 2026-04-30 7.23rc2
 
 # RULE 5.4: Escaped variables resolve at execution time
 :global gVar "value";

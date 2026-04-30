@@ -61,13 +61,22 @@
 :onerror e in={ :put "try"; } do={ :put "catch"; };
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 6. :execute SYNTAX - NO script= PARAMETER                                  │
+# │ 6. :execute STDOUT IS NOT OBSERVABLE WITHOUT as-string — see #13            │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# ✗ WRONG:
-# :execute script=":put test";
+# All three :execute source forms are accepted on 7.23rc2:
+#   (a) :execute "<src>"          (positional, fire-and-forget)
+#   (b) :execute script="<src>"   (named, fire-and-forget)
+#   (c) :execute script={ <blk> } (block, fire-and-forget)
+# The 'WRONG' framing in older docs was incorrect: bare script= parses and
+# executes. The pitfall is observability — none of (a)/(b)/(c) propagate the
+# inner :put output back to the caller. To capture stdout, use as-string (#13).
+# ✗ WRONG assumption (that bare named form returns observable output):
+# :execute script=":put hello";   # parses + runs, but caller sees nothing
 
-# ✓ CORRECT - Script is first positional argument:
-:execute ":put test";
+# ✓ CORRECT (capture output explicitly):
+:local r [:execute script=":put hello" as-string];
+:put $r;                          # => hello\n
+# VERIFIED REF-AUDIT-EXEC-SCRIPT-PARAM-ASYM 2026-04-30 7.23rc2
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 7. RECURSIVE FUNCTIONS NEED :global SELF-REFERENCE                         │
@@ -159,16 +168,17 @@
 :put ("Text " . $"my-var" . " text");
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 13. :execute script= PARAMETER DOES NOT EXIST                               │
+# │ 13. :execute SOURCE FORMS — positional / script= / script={...} — see #6   │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# ✗ WRONG:
-# :execute script=":put test";
-
-# ✓ CORRECT - First positional argument:
-:execute ":put test";
-
-# Exception: as-string version uses script=
+# All three forms parse + execute on 7.23rc2 (REF-AUDIT-EXEC-SCRIPT-PARAM-ASYM
+# 2026-04-30):
+:execute ":put test";                            # (a) positional, detached
+:execute script=":put test";                     # (b) named, detached — equivalent to (a)
+:execute script={ :put "test" };                 # (c) block form, detached
+# The output of (a)/(b)/(c) is NOT visible to the caller (detached job).
+# Use as-string to capture stdout as a str return value:
 :local result [:execute script=":put \"test\"" as-string];
+:put $result;                                    # => test\n
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 14. SCHEDULER $var vs \$var EXPANSION TIMING                                │
@@ -560,18 +570,13 @@
 :put [:typeof $output];                 # => str (sync, BLOCKING!)
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 47. :execute ERRORS ARE ISOLATED - PARENT CANNOT CATCH!                     │
+# │ 47. :execute ERRORS ARE ISOLATED — see #35                                  │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# ✗ WRONG - Assuming parent catches:
-:local caught false;
-:onerror e in={
-  [:execute ":error \"child-error\"" as-string];
-} do={
-  :set caught true;
-};
-# caught = false! Errors are ISOLATED!
-
-# ✓ CORRECT - Use globals or file for status
+# Duplicate of #35. Kept as a numbering placeholder so monotonic numbering is
+# preserved; full content lives at #35. The rule applies identically to bare
+# :execute and :execute ... as-string forms: the child runs as a detached job,
+# its errors stay inside the child, and the parent's :onerror does not fire.
+# Capture status via :global or /file from inside the child if needed.
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 48. :delay DOES NOT SYNC WITH ASYNC JOBS!                                   │
