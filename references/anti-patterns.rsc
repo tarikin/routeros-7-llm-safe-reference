@@ -1592,23 +1592,36 @@
 # # inside the script: standard /safe-mode take + explicit release pattern
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 104. SAME-USER 2ND take STEALS OWNERSHIP AND COMMITS PRIOR PENDING TX       │
+# │ 104. SAME-USER 2ND take IS A NON-DETERMINISTIC MUTEX (steal OR abort)       │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
 # CRITICAL on 7.23rc2. When session A holds safe-mode and a SAME-USER session
-# B calls /safe-mode take, B's take SUCCEEDS (returns bool:true), B becomes
-# the new owner, AND A's pending changes are COMMITTED to the configuration
-# rather than aborted. B then begins a fresh transaction; B's auto-unroll on
-# script-end rolls back B's transaction only. Broken mutex semantics — DO
-# NOT rely on safe-mode for cross-process exclusivity.
-# REF-AUDIT-SM-SAME-USER-CONTENTION 2026-04-30 7.23rc2.
+# B calls /safe-mode take, B's take EXHIBITS TWO OUTCOMES depending on which
+# session holds `current` at the moment of the call:
+#
+# Outcome STEAL (REF-AUDIT-SM-SAME-USER-CONTENTION 2026-04-30 7.23rc2):
+#   B's take SUCCEEDS (returns bool:true), B becomes the new owner, AND A's
+#   pending changes are COMMITTED to the configuration rather than aborted.
+#   B then begins a fresh transaction; B's auto-unroll rolls back B only.
+#
+# Outcome ABORT (REF-AUDIT-CRITIC7 2026-04-30 7.23rc2):
+#   B's take returns nil with stderr "Safe Mode is taken by current user in
+#   another session. Action aborted."; A retains ownership through to its
+#   own clean auto-unroll.
+#
+# The deciding factor is whether A's `current` flag has flipped (e.g. due to
+# any /safe-mode get from another session, idle window, or interleaving with
+# router-side state changes). Both outcomes have been reproduced on identical
+# 7.23rc2 lab conditions — DO NOT design for either. Treat same-user contention
+# as a coin flip at best, partial-commit catastrophe at worst.
 # Cross-link: #103 (no isolation), #100 / #101 / #102 (other safe-mode traps).
-# ✗ WRONG — assuming `take` blocks contending sessions:
+# ✗ WRONG — assuming `take` blocks contending sessions OR assuming the steal
+#           is deterministic:
 # # session A:
 # /safe-mode take; /ip firewall filter add chain=input action=accept comment="A";
 # :delay 30s; /safe-mode unroll;
 # # session B (parallel, same user):
-# /safe-mode take;   # NO ERROR — succeeds, A's "A" rule now COMMITTED
+# /safe-mode take;   # MAY succeed (commits A's "A" rule!) OR MAY abort with nil
 # ✓ CORRECT — orchestrate exclusivity at a higher layer:
 # # use a host-side flock(1) / scheduler queue / single-deployer pattern
 # # never assume safe-mode protects against concurrent operators

@@ -199,14 +199,19 @@
 # config changes mid-transaction. Do NOT assume mutual exclusion of reads.
 # REF-AUDIT-SM-NO-ISOLATION-MULTISESSION 2026-04-30 7.23rc2.
 
-# RULE 6.5: SAME-USER SECOND `take` STEALS AND COMMITS PRIOR TX (DANGER)
-# (verified 7.23rc2) Same-user second `take` from a different session SUCCEEDS
-# (returns bool:true), becomes the new owner, AND COMMITS the prior session's
-# pending changes — instead of aborting them. The first session's auto-unroll
-# on its own end then only rolls back the SECOND session's transaction. This
-# is fundamentally broken mutex semantics. Do NOT rely on safe-mode for
-# cross-process atomicity.
-# REF-AUDIT-SM-SAME-USER-CONTENTION 2026-04-30 7.23rc2.
+# RULE 6.5: SAME-USER SECOND `take` IS NON-DETERMINISTIC (DANGER)
+# (verified 7.23rc2 + critic-7 reproduction) Same-user second `take` from a
+# different session has TWO observed outcomes on 7.23rc2:
+#   STEAL (REF-AUDIT-SM-SAME-USER-CONTENTION): B's take returns bool:true,
+#     B becomes new owner, A's pending changes COMMIT to config (not abort);
+#     the first session's auto-unroll only rolls back B's tx.
+#   ABORT (REF-AUDIT-CRITIC7): B's take returns nil with stderr
+#     "Safe Mode is taken by current user in another session. Action aborted."
+#     A retains ownership through its own clean auto-unroll.
+# Outcome depends on which session holds `current` at the moment of call;
+# both reproduced under identical lab conditions. Do NOT design for either —
+# treat same-user contention as non-deterministic at best, partial-commit
+# catastrophe at worst. NEVER rely on safe-mode for cross-process atomicity.
 
 # RULE 6.6: owner=console is INVARIANT — useless for session attribution
 # Every non-PTY session reports owner=console; the field cannot identify
@@ -640,8 +645,8 @@
 # /interface set ether1 comment="new";
 # # Other sessions see "new" IMMEDIATELY, mid-transaction, before release!
 # Safe-mode provides ROLLBACK capability, NOT read isolation.
-# Concurrent same-user `take` even STEALS ownership and commits prior
-# pending changes — see RULE 6.5.
+# Concurrent same-user `take` is non-deterministic: it MAY steal ownership
+# (committing prior pending changes) OR abort with nil — see RULE 6.5.
 # REF-AUDIT-SM-NO-ISOLATION-MULTISESSION /
 # REF-AUDIT-SM-SAME-USER-CONTENTION 2026-04-30 7.23rc2.
 
@@ -736,7 +741,7 @@
 # │ ✗ External actions NOT undone - email/fetch/SNMP already sent!                 │
 # │ ✗ Global variables, log entries, runtime data NOT tracked                      │
 # │ ✗ No isolation — concurrent sessions see in-flight changes immediately         │
-# │ ✗ Same-user 2nd take STEALS ownership AND COMMITS prior pending changes        │
+# │ ✗ Same-user 2nd take is NON-DETERMINISTIC (steal+commit OR abort with nil)     │
 # │ ✗ /system script run inherits caller's TX; outer auto-unroll wipes inner work  │
 # │ ✗ Caught :error does NOT trigger handler — partial state persists              │
 # │ ✗ take() returns bool:true (was nil pre-7.18); double-take returns nil          │
@@ -877,14 +882,17 @@
 # global; only the "current" flag is per-session.
 # REF-AUDIT-SM-NO-ISOLATION-MULTISESSION 2026-04-30 7.23rc2.
 
-# RULE 14a.2: Same-user contention SUCCEEDS and COMMITS prior pending changes
+# RULE 14a.2: Same-user contention is NON-DETERMINISTIC (steal OR abort)
 # When session A holds safe-mode and same-user session B calls /safe-mode
-# take, B's take SUCCEEDS (returns bool:true). B becomes the new owner. A's
-# pending changes are NOT discarded — they are COMMITTED into the
-# configuration. B then begins a fresh transaction; B's auto-unroll on
-# script-end rolls back B's transaction only. This is fundamentally broken
-# mutex semantics: do NOT rely on safe-mode for cross-process atomicity.
-# REF-AUDIT-SM-SAME-USER-CONTENTION 2026-04-30 7.23rc2.
+# take, B's take has TWO outcomes (both reproduced 2026-04-30 7.23rc2):
+#   STEAL (REF-AUDIT-SM-SAME-USER-CONTENTION): B succeeds bool:true,
+#     A's pending changes COMMIT to config, B begins fresh tx.
+#   ABORT (REF-AUDIT-CRITIC7): B returns nil + stderr "Safe Mode is taken by
+#     current user in another session. Action aborted.", A retains ownership.
+# Outcome depends on which session holds `current` at the moment of call.
+# Do NOT design for either path — treat same-user contention as a coin
+# flip at best, partial-commit catastrophe at worst. NEVER rely on safe-mode
+# for cross-process atomicity.
 
 # RULE 14a.3: owner=console invariant (no per-session attribution)
 # Every non-PTY scripted session reports owner=console. The field is
