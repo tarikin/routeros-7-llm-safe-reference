@@ -41,11 +41,15 @@
 # RULE 2.2: step parameter
 :for i from=0 to=10 step=2 do={ };      # 0,2,4,6,8,10
 
-# RULE 2.3: Negative step for countdown
-:for i from=5 to=1 step=-1 do={ };      # 5,4,3,2,1
+# RULE 2.3: Negative step for countdown (REDUNDANT on 7.23rc2 — see 2.4)
+:for i from=5 to=1 step=-1 do={ };      # 5,4,3,2,1 (same as without step=-1)
 
-# RULE 2.4: from > to with positive step STILL EXECUTES (wraps!)
-# :for i from=10 to=5 do={ } executes 6 times! (wraps to max)
+# RULE 2.4: from > to auto-iterates DESCENDING — no step needed
+# REF-AUDIT-FOR-WRAP-DIRECTION 2026-04-30 7.23rc2: prior "wraps to max" claim
+# was FALSIFIED. The engine infers direction from from/to ordering.
+:for i from=5 to=1 do={ :put $i; };     # Prints 5,4,3,2,1 (5 iterations, NOT wrapping)
+:for i from=10 to=5 do={ };             # 6 iterations: 10,9,8,7,6,5 (descending)
+# Implication: explicit step=-1 is redundant; either form is fine.
 
 # RULE 2.5: from = to executes ONCE
 :for i from=5 to=5 do={ };              # Executes once with i=5
@@ -317,6 +321,9 @@
 # RULE 12.5: Error message is NOT bound in the handler — there is NO $err / $e / $errVar.
 # Named-binding syntaxes ALL fail at parse time. Handler is fire-and-forget; only the loop
 # iterator (and outer locals/globals) are visible.
+# VERIFIED REF-AUDIT-FOREACH-ON-ERROR-BIND 2026-04-30 7.23rc2 — :typeof of every
+# probed name ($e, $err, $errVar, $error, $errstr, $message) is "nothing" inside
+# the handler. Handler runs ONCE PER FAILING ITERATION, then the loop continues.
 :foreach i in=({1;2}) do={ :error "boom"; } on-error={
   # $err, $e, $errVar, $error, $errstr, $message — all empty/nothing
   :put ("typeof i=" . [:typeof $i]);    # => num  (loop iterator IS visible)
@@ -439,7 +446,7 @@
 # │ ✗ :quit is NOT catchable                                                     │
 # │ ✗ :exit is NOT catchable, NOT a loop primitive — use :break for loop-only    │
 # │ ✗ :exit accepts NO argument; :exit "msg" / :exit 1 are parse errors          │
-# │ ✗ :for with from>to STILL EXECUTES (wraps!)                                  │
+# │ ✗ :for with from>to auto-descends (NOT a wrap; iterates from..to inclusive)  │
 # │ ✗ :foreach/:for on-error={} default = CONTINUE (NOT catch-and-stop) — 7.19+  │
 # │ ✗ on-error={} handler does NOT bind error msg ($err/$e/$errVar all empty)    │
 # │ ✗ on-error={} SUPPRESSES error from outer :onerror (use :error to re-raise)  │

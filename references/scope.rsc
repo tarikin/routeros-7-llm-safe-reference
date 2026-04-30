@@ -93,6 +93,7 @@
 # READ on <7.22:   inner :global gName; re-declaration was REQUIRED for read access.
 # WRITE on ALL:    :set gName inside fn STILL requires :global gName; first
 #                  (parse error otherwise — applies to both 7.22+ and <7.22).
+# VERIFIED REF-AUDIT-SCOPE-FALLBACK-7.22 2026-04-30 7.23rc2.
 :global gFuncTest "start";
 :global fnReadGlobal do={
   :put $gFuncTest;                # 7.22+: works (auto-fallback). <7.22: empty.

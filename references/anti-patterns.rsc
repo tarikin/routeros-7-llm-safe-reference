@@ -383,13 +383,18 @@
 :if (true) do={} else={ :if ([$expensiveFn]) do={}; };
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 30. :for with from>to STILL EXECUTES (WRAPS!)                               │
+# │ 30. :for with from>to AUTO-ITERATES DESCENDING (NOT WRAP)                   │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# ✗ WRONG assumption that this runs 0 times:
-# :for i from=10 to=5 do={}  # Actually runs 6 times (wraps to max)!
+# Prior framing claimed "from>to wraps to max" — FALSIFIED on 7.23rc2.
+# REF-AUDIT-FOR-WRAP-DIRECTION 2026-04-30 7.23rc2: from=10 to=5 runs 6 times
+# in descending order (10,9,8,7,6,5). Same as step=-1 form — engine infers
+# direction from from/to ordering. No infinite loop, no off-by-one.
+# ✗ WRONG assumption that this runs 0 times OR wraps to max:
+# :for i from=10 to=5 do={}  # Actually runs 6 times in DESCENDING order
 
-# ✓ CORRECT - Check direction or use step=-1:
-:for i from=10 to=5 step=-1 do={ };     # Correct countdown
+# ✓ CORRECT — both forms are equivalent on 7.23rc2:
+:for i from=10 to=5 do={ };             # 10,9,8,7,6,5 (auto-descending)
+:for i from=10 to=5 step=-1 do={ };     # same — step=-1 is redundant
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 31. SYNTAX ERRORS CANNOT BE CAUGHT                                          │
@@ -1319,6 +1324,7 @@
 # to any variable inside the handler. None of $1, $err, $e, $errVar, $error,
 # $errstr, $message, $reason, $exception resolve. The handler is fire-and-forget.
 # Named-binding syntaxes (on-error errVar={...}, error-var=name) all parse-error.
+# VERIFIED REF-AUDIT-FOREACH-ON-ERROR-BIND 2026-04-30 7.23rc2.
 # ✗ WRONG:
 # :foreach i in=({1;2}) do={ :error "boom" } on-error={ :put $err; };
 # # $err is "nothing"
