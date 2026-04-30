@@ -2,7 +2,7 @@
 # │              RouterOS 7 DateTime Reference (Verified 7.21+)                 │
 # │                    Empirically Tested - 500+ Tests                          │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# Version: 1.0 | Target: RouterOS 7.10+ | Last Verified: 2025-12-23
+# Version: 1.1 | Target: RouterOS 7.10+ | Last Verified: 2026-04-30 on 7.23rc2
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #                           DATETIME TYPE SUMMARY

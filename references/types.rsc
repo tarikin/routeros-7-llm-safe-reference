@@ -71,6 +71,10 @@
 # RULE 2.4: :tobool - behavior CHANGED in 7.22+
 # Pre-7.22: accepts num only; any string returns nil.
 # 7.22+:    accepts str / num / bool / ip / ip6 / id / array; only `time` returns nil.
+# VERIFIED REF-AUDIT-TOBOOL-CASESTRICT-7.22 2026-04-30 7.23rc2:
+# str whitelist (case-strict, no whitespace tolerance): {yes, no, true, false, 1, 0}.
+# All other strings (incl. "YES", "True", " yes", "yes ", "y", "on", "off") → bool false.
+# Failure mode is SILENT (returns false, never nil for str input on 7.22+).
 :put [:tobool 1];                       # both: true
 :put [:tobool 0];                       # both: false
 # 7.22+ string casting (case-sensitive, exact match — NO whitespace tolerance):

@@ -240,6 +240,7 @@
 :put [:tobool $s];                    # 7.22+: true
 # CRITICAL: time is the ONLY type that returns nil on 7.22+
 :put [:typeof [:tobool 1s]];          # nil — use [:tonsec $t] > 0 instead
+# VERIFIED REF-AUDIT-TOBOOL-CASESTRICT-7.22 2026-04-30 7.23rc2
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 18. :tonum DOES NOT SUPPORT FLOATS OR WHITESPACE                            │
