@@ -93,8 +93,14 @@
 :local escExample "Line1\nLine2 with \"quotes\", backslash\\, tab\t, and carriageReturn\r";
 :put $escExample;
 
-# HEX ESCAPES (UTF-8 / EMOJI, ETC.)
-:local hexStr "Some text \F0\9F\XX\YY more text"; :put $hexStr;
+# HEX ESCAPES (UTF-8 / EMOJI, ETC.) — \HH where H is UPPERCASE 0-9/A-F.
+# Invalid hex digits inside a string literal cause a PARSE-TIME error that
+# :onerror CANNOT catch (the script body never reaches runtime). Validate
+# any dynamic / user-supplied bytes before embedding into a literal.
+# REF-AUDIT-CORE-HEX-XX-YY 2026-04-30 7.23rc2:
+#   "...\F0\9F\XX\YY..." → Script Error: expected value value (line N column M)
+:local hexEmoji "\F0\9F\9F\A1";  :put $hexEmoji;   # 🟡 (yellow circle, U+1F7E1)
+:local hexAscii "\41\42\43";     :put $hexAscii;   # ABC
 
 # PRINT & WHERE
 /ip route print where gateway=1.1.1.1;

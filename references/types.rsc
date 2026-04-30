@@ -198,13 +198,18 @@
 # RULE 3.8: Numeric encoding — to=num / from=num (7.17+)
 # CRITICAL: to=num returns type "str" (NOT num) — decimal of a big-endian
 # 64-bit unsigned packing of the input bytes. Inputs > 8 bytes silently
-# return "" (empty string), NO error raised.
+# return "" (empty string), NO error raised. :onerror does NOT fire.
+# VERIFIED REF-AUDIT-TYPES-CONVERT-NUM-9BYTES 2026-04-30 7.23rc2.
 :put [:typeof [:convert "A" to=num]];               # => str  (NOT num!)
 :put [:convert "A" to=num];                         # => 65         (= 0x41)
 :put [:convert "AB" to=num];                        # => 16706      (= 0x4142)
 :put [:convert "ABCD" to=num];                      # => 1094861636 (= 0x41424344)
-:put [:convert "12345678" to=num];                  # => 3544952156018063160 (8-byte cap)
+:put [:convert "12345678" to=num];                  # => 4702394921427289928 (8-byte cap)
 :put [:len [:convert "ABCDEFGHI" to=num]];          # => 0 (9 bytes silently → "")
+:put [:len [:convert "ABCDEFGHIJ" to=num]];         # => 0 (10 bytes silently → "")
+# Empty input is a degenerate case (single zero char "0", len=1; not numeric):
+:put [:typeof [:convert "" to=num]];                # => str
+:put [:len [:convert "" to=num]];                   # => 1
 # from=num decodes integer back to byte string (big-endian):
 :put [:convert 65 from=num];                        # => A
 :put [:convert 6382179 from=num];                   # => abc       (= 0x616263)
