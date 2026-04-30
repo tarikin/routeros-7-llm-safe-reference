@@ -13,6 +13,17 @@
   # error handler ($errorVar contains error message)
 };
 
+# RULE 1.1b: do={} is OPTIONAL on 7.15+ — missing do= behaves as do={}
+# Pre-7.15: omitting do= produced inconsistent / parser-confused behavior;
+# 7.15 fixed this. On 7.15+ (verified 7.23rc2):
+:onerror e in={ :error "x" };           # Error suppressed; script continues
+:onerror e in={ :put "ok" };            # Body runs; script continues
+:local r [:onerror e in={ :error "x" }];  # Returns true (still bool)
+:local r2 [:onerror e in={ :put "ok" }];  # Returns false
+# `in=` and the error variable name remain MANDATORY on all versions:
+# :onerror in={ :error "x" } do={ };     # ERROR: missing value of argument error
+# :onerror e do={ :put "h" };            # ERROR: missing value(s) of argument(s) in
+
 # RULE 1.2: :onerror RETURNS BOOLEAN!
 :local hadError [:onerror e in={ :error "test"; } do={}];
 :put $hadError;                         # => true
@@ -246,7 +257,8 @@
 # ┌──────────────────────────────────────────────────────────────────────────────┐
 # │ CRITICAL LLM PITFALLS                                                        │
 # ├──────────────────────────────────────────────────────────────────────────────┤
-# │ ✗ :return; without value HANGS ("value:" prompt)                             │
+# │ ✗ :return; without value raises "missing value" error (catchable);           │
+# │   on legacy <7.15 some contexts hung at "value:" prompt — use :return "";    │
 # │ ✗ :execute errors are ISOLATED - parent cannot catch                         │
 # │ ✗ :quit is NOT catchable (and prints "interrupted")                          │
 # │ ✗ :exit is NOT catchable, NOT a loop primitive (7.22+, silent)               │

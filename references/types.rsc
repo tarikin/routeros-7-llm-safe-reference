@@ -1,5 +1,5 @@
 # RouterOS 7 Type System Reference
-# VERIFIED on RouterOS 7.21+ baseline; 7.22+ additions marked inline
+# VERIFIED on RouterOS 7.21+ baseline; 7.14-7.22 additions marked inline
 # This document contains ONLY empirically verified behavior
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -119,6 +119,15 @@
 # │                      3. :convert COMMAND (7.12+)                            │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
+# Verified enum values on 7.23rc2 (testing):
+#   to=    base32, base64, byte-array, hex, num, raw, url,
+#          bit-array-lsb, bit-array-msb
+#   from=  base32, base64, byte-array, hex, num, raw, url
+#   transform= none, lc, uc, lcfirst, ucfirst, lf, crlf,
+#              reverse, rot13, md5, sha512
+# (sha1 / sha256 are NOT accepted; uppercase / lowercase / toupper / tolower
+#  also NOT accepted — see RULE 3.6.)
+
 # RULE 3.1: Base64 encoding/decoding
 :put [:convert "abc" to=base64];        # => YWJj
 :put [:convert from=base64 "YWJj"];     # => abc
@@ -127,14 +136,113 @@
 :put [:convert "abc" to=hex];           # => 616263
 :put [:convert from=hex "616263"];      # => abc
 
-# RULE 3.3: Transforms available
+# RULE 3.3: Hash & text transforms (transform= argument)
 :put [:convert "abcd" transform=reverse]; # => dcba
 :put [:convert "hello" transform=rot13];  # => uryyb
-:put [:len [:convert "test" transform=md5]];    # => 16 bytes
-:put [:len [:convert "test" transform=sha512]]; # => 64 bytes
+:put [:len [:convert "test" transform=md5]];    # => 16 (raw bytes packed in str)
+:put [:len [:convert "test" transform=sha512]]; # => 64 (raw bytes packed in str)
+# To see hash output as printable hex, chain: transform=md5 to=hex
+:put [:convert "test" transform=md5 to=hex];    # => 098f6bcd4621d373cade4e832627b4f6
 
-# RULE 3.4: Combined operations
+# RULE 3.4: Combined operations (from + transform + to all chainable)
 :put [:convert from=base64 "YWJjZA==" transform=reverse to=hex]; # => 64636261
+
+# RULE 3.5: byte-array encoding (7.15+ added; 7.16+ enhanced)
+# to=byte-array returns type "array" of num (each byte 0-255).
+# Round-trip via from=byte-array reconstructs the original string.
+:local ba [:convert "abc" to=byte-array];
+:put [:typeof $ba];                     # => array  (NOT a dedicated byte-array type)
+:put [:len $ba];                        # => 3
+:put $ba;                               # => 97;98;99   (single line)
+:put ($ba->0);                          # => 97         (typeof num)
+:put [:convert $ba from=byte-array];    # => abc        (typeof str)
+# UTF-8 multibyte: byte count, NOT codepoint count
+:put [:len [:convert "Привет" to=byte-array]]; # => 12  (6 chars × 2 bytes)
+# Coercion: any non-string input is :tostr'd first
+:put [:len [:convert 192.168.1.1 to=byte-array]]; # => 11 (bytes of "192.168.1.1")
+# from=byte-array silently returns "" on bad input (no error raised):
+:put [:len [:convert "abc" from=byte-array]];     # => 0  (string input → empty)
+:put [:len [:convert ({300;400}) from=byte-array]]; # => 0 (>255 → empty)
+
+# RULE 3.6: Case transforms — transform=uc / lc / ucfirst / lcfirst / none (7.16+)
+# CRITICAL NAMING: the values are uc / lc, NOT uppercase / lowercase.
+# transform=uppercase, transform=lowercase, :tolower, :toupper all parse-fail.
+:put [:convert "Hello World" transform=uc];      # => HELLO WORLD
+:put [:convert "Hello World" transform=lc];      # => hello world
+:put [:convert "hello" transform=ucfirst];       # => Hello   (first char only)
+:put [:convert "HELLO" transform=lcfirst];       # => hELLO   (first char only)
+:put [:convert "Hello" transform=none];          # => Hello   (identity / no-op)
+# uc / lc are ASCII-ONLY — Cyrillic and other multibyte pass through unchanged:
+:put [:convert "ПРИВЕТ" transform=lc];           # => ПРИВЕТ  (UTF-8 untouched)
+:put [:convert "Hello Привет" transform=uc];     # => HELLO Привет
+# Implicit :tostr coercion on non-string inputs:
+:put [:convert true transform=uc];               # => TRUE
+:put [:convert 192.168.1.1 transform=uc];        # => 192.168.1.1
+# Multiple transform= keys → only the LAST wins (no chaining via repeats):
+# :put [:convert "Hello" transform=md5 transform=uc];  # uc applied to md5 binary → garbled
+
+# RULE 3.7: Line-ending transforms — transform=lf / crlf (7.17+)
+# CRITICAL: these are TRANSFORMS, not destinations.
+# to=lf, to=crlf, from=lf, from=crlf all PARSE-FAIL.
+:put [:len [:convert "a\r\nb\r\nc" transform=lf]];  # => 5  (\r\n → \n)
+:put [:len [:convert "a\nb\nc" transform=crlf]];    # => 7  (\n → \r\n)
+# Bare \r is also normalized:
+:put [:len [:convert "a\rb" transform=lf]];         # => 3  (\r → \n)
+:put [:len [:convert "a\rb" transform=crlf]];       # => 4  (\r → \r\n)
+# transform=crlf is idempotent on already-CRLF input (never doubles):
+:put [:len [:convert "a\r\nb" transform=crlf]];     # => 4  (unchanged)
+# No newline → unchanged; empty → empty
+:put [:convert "abc" transform=lf];                 # => abc
+:put [:len [:convert "" transform=lf]];             # => 0
+
+# RULE 3.8: Numeric encoding — to=num / from=num (7.17+)
+# CRITICAL: to=num returns type "str" (NOT num) — decimal of a big-endian
+# 64-bit unsigned packing of the input bytes. Inputs > 8 bytes silently
+# return "" (empty string), NO error raised.
+:put [:typeof [:convert "A" to=num]];               # => str  (NOT num!)
+:put [:convert "A" to=num];                         # => 65         (= 0x41)
+:put [:convert "AB" to=num];                        # => 16706      (= 0x4142)
+:put [:convert "ABCD" to=num];                      # => 1094861636 (= 0x41424344)
+:put [:convert "12345678" to=num];                  # => 3544952156018063160 (8-byte cap)
+:put [:len [:convert "ABCDEFGHI" to=num]];          # => 0 (9 bytes silently → "")
+# from=num decodes integer back to byte string (big-endian):
+:put [:convert 65 from=num];                        # => A
+:put [:convert 6382179 from=num];                   # => abc       (= 0x616263)
+:put [:convert 0x4142434445464748 from=num];        # => ABCDEFGH
+# from=num accepts string-shaped numeric input:
+:put [:convert "65" from=num];                      # => A
+# Edge: from=num 0 produces a single NUL byte ("\0"), len=1 (not empty!)
+:put [:len [:convert 0 from=num]];                  # => 1
+# Edge: from=num on negative silently returns ""
+:put [:len [:convert -1 from=num]];                 # => 0
+
+# RULE 3.9: URL percent-encoding — to=url / from=url (7.15+)
+# 7.15 added space, CR, LF coverage. ENCODES: space (%20), \r (%0d),
+# \n (%0a), and most RFC 3986 reserved chars (gen/sub-delims).
+# DOES NOT ENCODE: % itself, \t, 0x00-0x1F (except CR/LF), 0x7F (DEL),
+# 0x80-0xFF (UTF-8 multibyte).
+:put [:convert "a b c" to=url];                     # => a%20b%20c
+:put [:convert "a\r\nb" to=url];                    # => a%0d%0ab
+:put [:convert ":/?#[]@" to=url];                   # => %3a%2f%3f%23%5b%5d%40
+:put [:convert "100%" to=url];                      # => 100%   (% NOT encoded!)
+:put [:convert "a\tb" to=url];                      # => a\tb   (tab passthrough)
+:put [:convert "Привет" to=url];                    # => Привет (UTF-8 passthrough)
+# Encoder uses lowercase hex (%3a not %3A); decoder accepts either case.
+# from=url silent failure on bad %-hex:
+:put [:len [:convert "%ZZ" from=url]];              # => 0 (silent fail)
+:put [:len [:convert "%2"  from=url]];              # => 0 (silent fail)
+# '+' is NOT form-urlencoded — '+' decodes back to '+', not space:
+:put [:convert "+" from=url];                       # => +
+
+# RULE 3.10: :tolf / :tocrlf standalone commands (7.14+)
+# Equivalent to :convert ... transform=lf / transform=crlf — exact byte-for-byte
+# equality. Accept any input type via implicit :tostr.
+:put ([:tolf "a\r\nb"] = [:convert "a\r\nb" transform=lf]);   # => true
+:put ([:tocrlf "a\nb"] = [:convert "a\nb" transform=crlf]);   # => true
+:put [:tolf 42];                       # => "42"   (non-string :tostr'd first)
+:put [:len [:tolf]];                   # => 0      (no-arg returns ""; no error)
+:local nilv;
+:put [:len [:tolf $nilv]];             # => 0      (nil → "")
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      4. IMPLICIT TYPE COERCION                              │
@@ -311,6 +419,12 @@
 # │ :toip6           │ Parse IPv6                                                │
 # │ :tonsec          │ Time→nanoseconds (7.12+)                                  │
 # │ :convert         │ base64/hex/transforms (7.12+)                             │
+# │ :convert         │ to=byte-array (7.15+); to=base32, to=raw (7.15+)          │
+# │ :convert         │ transform=uc/lc/ucfirst/lcfirst/none (7.16+) ASCII-only   │
+# │ :convert         │ transform=lf/crlf line-end normalize (7.17+)              │
+# │ :convert         │ to=num/from=num 64-bit BE pack, ≤8 bytes (7.17+)          │
+# │ :convert         │ to=url adds space/CR/LF coverage (7.15+); % NOT encoded   │
+# │ :tolf / :tocrlf  │ Standalone aliases of transform=lf / crlf (7.14+)         │
 # └──────────────────┴───────────────────────────────────────────────────────────┘
 #
 # ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -325,12 +439,24 @@
 # │ ✗ "abc" < "xyz" is ERROR (string comparison only = and !=)                   │
 # │ ✗ id < "string" ERRORS (7.22+ ordering not coercive); id = "string" works    │
 # │ ✗ Integer overflow wraps silently to negative                                │
+# │ ✗ transform=uppercase / lowercase / toupper / tolower DO NOT EXIST           │
+# │   use transform=uc / lc / ucfirst / lcfirst (7.16+); ASCII-only              │
+# │ ✗ :tolower / :toupper standalone DO NOT EXIST (use :convert transform=lc/uc) │
+# │ ✗ to=lf / to=crlf / from=lf / from=crlf PARSE-FAIL — use transform=lf/crlf   │
+# │ ✗ [:convert ... to=num] returns str (NOT num); >8 bytes silently → ""        │
+# │ ✗ [:convert 0 from=num] returns "\0" (single NUL byte, len=1) NOT empty      │
+# │ ✗ [:convert ("len=" . $byteArray)] iterates: prints "len=97","len=98"...     │
+# │   use [:tostr $ba] inside concat, or :put $ba (no concat) for one line       │
+# │ ✗ to=url leaves %, \t, 0x80-0xFF unencoded; from=url silent "" on bad %-hex  │
+# │ ✗ [:typeof [:convert "x" to=byte-array]] = "array" (no dedicated type)       │
+# │ ✗ [:convert "abc" from=byte-array] silently returns "" (no error on bad in)  │
 # │ ✓ "5" + 10 = 15 (string auto-coerced in arithmetic)                          │
 # │ ✓ 192.168.1.1 + 1 = 192.168.1.2 (IP arithmetic works!)                       │
 # │ ✓ ::1 << 4 = ::10 (IPv6 bit-shift on 7.22+; full bitwise set: & | ^ ~ << >>) │
 # │ ✓ ($idA < $idB) on 7.22+ = bool, ordered by hex value of *XX literal         │
+# │ ✓ [:tolf $s] = [:convert $s transform=lf] (7.14+ standalone alias)           │
 # └──────────────────────────────────────────────────────────────────────────────┘
 #
 # ══════════════════════════════════════════════════════════════════════════════
-# END OF VERIFIED REFERENCE - RouterOS 7.21+ baseline; 7.22+ additions inline
+# END OF VERIFIED REFERENCE - RouterOS 7.21+ baseline; 7.14-7.22 additions inline
 # ══════════════════════════════════════════════════════════════════════════════

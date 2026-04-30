@@ -226,7 +226,7 @@
 # All others coerce to false (NOT nil) on 7.22+; pre-7.22 they returned nil.
 :put [:tobool "yes"];                 # 7.22+: true   |  <7.22: nil
 # To support both versions, normalize before casting:
-:local s "Yes"; :set s [:tolower $s];
+:local s "Yes"; :set s [:convert $s transform=lc];
 :put [:tobool $s];                    # 7.22+: true
 # CRITICAL: time is the ONLY type that returns nil on 7.22+
 :put [:typeof [:tobool 1s]];          # nil — use [:tonsec $t] > 0 instead
@@ -952,3 +952,545 @@
 :if ([:tonsec $duration] > 0) do={ :put "duration set"; }
 # Or compare against zero directly:
 :if ($duration > 0s) do={ :put "duration set"; }
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 75. :return WITHOUT VALUE STILL ERRORS ON 7.23rc2 (7.17 FIX INTERNAL)       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# The 7.17 changelog "console - execute :return command without error" suggested
+# bare :return; would become valid. Empirically (verified 2026-04-30 on 7.23rc2):
+# bare :return; in EVERY context tested (top-level, fn body, :do, :if, :foreach,
+# :onerror handler) STILL raises:
+#     Script Error: missing value(s) of argument(s) value (:return; line N)
+# The 7.17 fix appears to be a narrower internal compiler refactor; user-facing
+# behavior is unchanged. The error IS now catchable via :onerror — see #27 for
+# the basic guidance. This entry adds the version-context detail.
+# ✗ WRONG:
+# :global cleanup do={ :put "x"; :return; }      # missing value error on call
+# :do { :return; } on-error={ :put "caught" }    # caught — error IS catchable
+# Top-level: :return "x" THROWS x as the error message (not a return-from-script):
+# :return "early";                               # Script Error: early (:import; ...)
+# ✓ CORRECT — always provide an explicit value (use empty string for "no value"):
+:global cleanup do={ :put "doing cleanup"; :return ""; }
+:global cleanup2 do={ :return value=""; }
+# When you mean "stop the whole script silently", use :exit (7.22+), not :return.
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 76. :onerror REQUIRES in= AND ERROR-VAR; do= IS OPTIONAL ON 7.15+           │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# 7.15 fixed :onerror behavior when do= is absent — formalising do= as optional.
+# Authors sometimes flip the requirements (omit in= or error-var). Empirically on
+# 7.23rc2: in= and the error variable name are MANDATORY on every version; do=
+# is optional on 7.15+ and behaves as `do={}` (suppresses the error, return value
+# is still bool).
+# ✗ WRONG:
+# :onerror in={ :error "x" } do={ };       # missing value of argument error
+# :onerror e do={ :put "h" };              # missing value(s) of argument(s) in
+# :onerror;                                # missing value of argument error
+# ✓ CORRECT — minimum valid form on 7.15+:
+:onerror e in={ :error "may-fail" };                   # do= can be omitted
+:local hadErr [:onerror e in={ :error "x" }];          # => true  (still bool!)
+:local noErr  [:onerror e in={ :put "ok" }];           # => false
+:onerror e in={ :error "x" } do={ :put $e; };          # full form when handling needed
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 77. :tolower / :toupper / transform=uppercase DO NOT EXIST                  │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# A common LLM hallucination: :tolower / :toupper standalone commands, OR
+# :convert transform=uppercase / lowercase. NONE of these forms exist on any
+# RouterOS 7.x verified through 7.23rc2. The actual ENUM values for case
+# transform are uc / lc / ucfirst / lcfirst / none (added 7.16+).
+# ✗ WRONG:
+# :put [:tolower "Hello"];                       # bad command name tolower
+# :put [:toupper "Hello"];                       # bad command name toupper
+# :put [:convert "Hello" transform=uppercase];   # input does not match any value
+# :put [:convert "Hello" transform=lowercase];   # input does not match any value
+# :put [:convert "Hello" transform=upper];       # parse error
+# ✓ CORRECT — :convert transform= with the actual enum tokens (7.16+):
+:put [:convert "Hello World" transform=uc];     # => HELLO WORLD
+:put [:convert "Hello World" transform=lc];     # => hello world
+:put [:convert "hello"       transform=ucfirst]; # => Hello   (first char only)
+:put [:convert "HELLO"       transform=lcfirst]; # => hELLO
+# ASCII-only — UTF-8 multibyte (Cyrillic, accented Latin) passes through:
+:put [:convert "ПРИВЕТ" transform=lc];           # => ПРИВЕТ  (NOT lowercased)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 78. :convert to=lf / from=lf / to=crlf DO NOT EXIST — USE transform=lf/crlf │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Line-ending normalization in 7.17+ is exposed as transform=lf / transform=crlf,
+# NOT as to= / from= destinations. The 7.17 changelog correctly says "added
+# lf/crlf options to :convert transform" — the give-away word is "transform".
+# Bare :tolf / :tocrlf standalone commands also exist as aliases (7.14+).
+# ✗ WRONG:
+# :local s [:convert "a\r\nb" to=lf];          # syntax error
+# :local s [:convert "a\nb"  to=crlf];          # syntax error
+# :local s [:convert "a\nb"  from=lf];          # syntax error
+# ✓ CORRECT — transform=lf / transform=crlf, or the standalone aliases:
+:put [:len [:convert "a\r\nb\r\nc" transform=lf]];   # => 5  (\r\n -> \n)
+:put [:len [:convert "a\nb\nc"     transform=crlf]];   # => 7  (\n -> \r\n)
+:put ([:tolf   "a\r\nb"] = [:convert "a\r\nb" transform=lf]);     # => true
+:put ([:tocrlf "a\nb"]   = [:convert "a\nb"   transform=crlf]);   # => true
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 79. BYTE-ARRAY CONCATENATION ITERATES (ONE LINE PER BYTE)                   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# [:convert <x> to=byte-array] returns an `array` of nums (each byte 0-255), and
+# array operands of the . operator unfold ELEMENT-BY-ELEMENT in :put — so
+# ("prefix " . $ba) prints "prefix 97" then "prefix 98" etc., one line per byte.
+# ✗ WRONG:
+# :local ba [:convert "Hello" to=byte-array];
+# :put ("len=" . $ba);                          # 5 lines: len=72, len=101, ...
+# ✓ CORRECT — :put $ba directly (no concat) OR [:tostr $ba] for joined string:
+:local ba [:convert "Hello" to=byte-array];
+:put $ba;                                       # => 72;101;108;108;111  (one line)
+:put ("bytes=" . [:tostr $ba]);                 # => bytes=72;101;108;108;111
+:put ("len="   . [:len   $ba]);                 # => len=5
+:put ("first=" . ($ba->0));                     # => first=72
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 80. :convert to=num RETURNS str + SILENT 8-BYTE CEILING                     │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# :convert "X" to=num packs bytes into a 64-bit big-endian unsigned integer and
+# returns it as a STRING (typeof str), NOT a num. Inputs longer than 8 bytes
+# silently produce "" — no error raised. Equally subtle: from=num 0 returns a
+# single NUL byte ("\0", len 1), NOT the empty string. (7.17+)
+# ✗ WRONG:
+# :local n [:convert $userInput to=num];
+# :if ($n > 1000) do={ ... };                   # $n is str — string comparison
+# :if ($n = 0) do={ ... };                      # only true on empty input
+# ✓ CORRECT — bound-check inputs and convert :tonum if you need numeric ops:
+:local s "Hi";
+:local n [:convert $s to=num];                  # => str "18537"  (= 0x4869)
+:put [:typeof $n];                              # => str
+:if ([:len $s] > 8) do={ :error "to=num cannot pack > 8 bytes"; }
+:put [:tonum $n];                               # => 18537 (now num for arithmetic)
+:put [:len [:convert 0 from=num]];              # => 1   (single NUL byte!)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 81. :convert to=url DOES NOT ENCODE %, \t, HIGH-BIT BYTES, OR DEL           │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Even on 7.15+ (which "added spaces, CR, LF" coverage), :convert to=url leaves
+# several bytes UN-encoded: literal %, tab (0x09), 0x00-0x1F except CR/LF,
+# DEL (0x7F), and ALL 0x80-0xFF (UTF-8 multibyte). RouterOS-encoded URLs that
+# contain user input may not be RFC 3986 conformant; round-trip via from=url is
+# lossy when the original has any of those bytes. from=url silently returns ""
+# on bad %-hex (%ZZ, %2, lone %).
+# ✗ WRONG:
+# :local enc [:convert ("rate=100% " . $cyrillic) to=url];
+# /tool fetch url=("https://api?q=" . $enc);    # MAY FAIL: % stays bare; UTF-8 stays bare
+# :put ([:convert $enc from=url] = $orig);      # => false (lossy round trip)
+# ✓ CORRECT — pre-validate input or use :convert to=hex / to=base64 for raw bytes:
+:local safe [:convert "hello world" to=url];   # => hello%20world (ASCII-only)
+:put [:convert "Привет" to=hex];               # => d09fd180d0b8d0b2d0b5d182
+:put [:convert "Привет" to=base64];            # => 0J/RgNC40LLQtdGC
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 82. :range HAS NO step= PARAMETER (7.17+)                                   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Developers porting from Python's range(start, stop, step) or Lua's for loop
+# expect a stride parameter on :range. On 7.23rc2, [:range from=N to=M] accepts
+# only those two named arguments (and a 2-positional form). step= / increment=
+# / by= are all rejected with "bad parameter step".
+# ✗ WRONG:
+# :foreach v in=[:range from=1 to=10 step=2] do={ :put $v }
+# # => Script Error: bad parameter step
+# ✓ CORRECT — emulate stride via modulo filter, OR use :for which does support step=
+:foreach v in=[:range from=1 to=10] do={
+  :if (($v % 2) = 1) do={ :put $v };           # => 1 3 5 7 9
+}
+:for i from=1 to=10 step=2 do={ :put $i };     # => 1 3 5 7 9
+# Hard cap: :range output > 1,000,000 elements raises "size of the ranged array
+# is too large (max 1000000)". Use :for for unbounded iteration.
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 83. :rndnum from > to RETURNS GARBAGE INT64 (NO ERROR)                      │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# When :rndnum is called with from > to it does NOT error and does NOT clamp;
+# it returns an arbitrary int64 (often a giant negative from uninitialised
+# memory). Reproducible 7.23rc2: [:rndnum from=10 to=1] -> -7956501532190287755.
+# ✗ WRONG:
+# :local pick [:rndnum from=$max to=$min];     # silent garbage when max > min
+# ✓ CORRECT — always order arguments low->high; defend with a swap:
+:local lo $min;
+:local hi $max;
+:if ($lo > $hi) do={ :local tmp $lo; :set lo $hi; :set hi $tmp; }
+:local pick [:rndnum from=$lo to=$hi];
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 84. :grep IS NOT A STRING-SEARCH UTILITY — IT EXECUTES SCRIPT=              │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# The name suggests Unix grep on a string; on RouterOS, :grep RUNS its script=
+# argument (RouterOS source) and counts STDOUT LINES that match pattern= (regex).
+# Calling [:grep "haystack" "needle"] does NOT search the haystack — it tries to
+# execute "haystack" as a script.
+# ✗ WRONG:
+# :local hits [:grep $logText "ERROR"];        # tries to run $logText as a script
+# ✓ CORRECT — substring/regex search of an in-memory string:
+:if ([:find $logText "ERROR"] >= 0) do={ :put "found"; }
+:if ($logText ~ "ERROR|FAIL")    do={ :put "match"; }
+# Genuine :grep usage — run a print and count matching lines:
+:local errCount [:grep script="/log print" pattern="error"];
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 85. :lock IS A NO-OP IN NON-INTERACTIVE SCRIPTS                             │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# 7.16 changelog says ":lock command to lock screen". In non-interactive
+# script context (/import, ros-deploy, /system script run), :lock returns
+# immediately (~20us) and does NOT block, even with delay=5s. Verified on
+# 7.23rc2: [:time {:lock delay=5s}] elapses ~23 microseconds.
+# ✗ WRONG:
+# :lock delay=30s;                              # writer expected a 30s pause
+# :put "after 30s";                             # actually prints immediately
+# ✓ CORRECT — use :delay for pauses; :lock is interactive-console only:
+:delay 30s;
+:put "after 30s";
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 86. :rndstr CHARSET IS FIXED — NO source= / alphabet= ON 7.23rc2            │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Developers may try [:rndstr length=20 source="0123456789"] or
+# alphabet= / chars= / type= expecting custom-alphabet random strings; all
+# such parameters are rejected on 7.23rc2 with "expected end of command".
+# Default length is 16; fixed alphabet [A-Za-z0-9].
+# ✗ WRONG:
+# :local digits [:rndstr length=8 source="0123456789"];
+# # => Script Error: expected end of command
+# ✓ CORRECT — build a custom-alphabet random string manually:
+:local alphabet "0123456789"
+:local out ""
+:for i from=1 to=8 do={
+  :local idx [:rndnum from=0 to=([:len $alphabet] - 1)];
+  :set out ($out . [:pick $alphabet $idx ($idx + 1)]);
+}
+:put $out
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 87. :resolve type= IS ADDRESS-FAMILY SELECTOR, NOT DNS-RECORD-TYPE          │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# The 7.15 changelog "added type parameter to :resolve" is misleading. The
+# accepted value-set is {ipv4, ipv6, any, any6} — address-family selection.
+# DNS record-type names (A, AAAA, MX, TXT, NS, CNAME, SOA, SRV, PTR) are ALL
+# rejected at runtime ("input does not match any value of type"). Bare
+# uppercase identifiers (type=A) are PARSE errors before runtime.
+# ✗ WRONG:
+# :put [:resolve "google.com" type=A];          # parse error (uppercase ident)
+# :put [:resolve "google.com" type="A"];        # runtime error (no match)
+# :put [:resolve "google.com" type="MX"];       # runtime error (no match)
+# ✓ CORRECT — address-family selection only:
+:put [:resolve "google.com" type=ipv4];        # => 142.251.x.x   (ip)
+:put [:resolve "google.com" type=ipv6];        # => 2a00:...      (ip6)
+:put [:resolve "google.com" type=any];         # IPv4 preferred, fallback v6
+:put [:resolve "google.com" type=any6];        # IPv6 preferred, fallback v4
+# For MX/TXT/SRV/etc. queries, :resolve is NOT the right tool — use
+# /ip dns static find on locally-configured records, or /tool fetch a DoH endpoint.
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 88. :totime ISO T-SEPARATOR RETURNS nil — USE SPACE DELIMITER               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# 7.18 added "ISO timezone format" support to :totime, but the parser REJECTS
+# T-separator forms (the default output of JavaScript toISOString(), Python
+# isoformat(), C# DateTimeOffset, etc.) — they return nil silently. Space
+# delimiter is REQUIRED. LLMs/integrations emitting ISO timestamps will hit
+# silent nil values that propagate into downstream code.
+# ✗ WRONG:
+# :local t [:totime "2026-04-30T12:00:00Z"];     # => nil silently
+# :local t [:totime "2026-04-30T12:00:00.123Z"]; # => nil silently
+# :local t [:totime "2026-04-30T12:00:00"];      # => nil silently
+# ✓ CORRECT — convert T-separator to space, then check for nil via :typeof:
+:global parseIso8601 do={
+  :local s $1
+  :local p [:find $s "T"]
+  :if ([:typeof $p] != "nil") do={
+    :set s ([:pick $s 0 $p] . " " . [:pick $s ($p+1) [:len $s]])
+  }
+  :local t [:totime $s]
+  :if ([:typeof $t] = "nil") do={ :error ("bad ISO timestamp: " . $1); }
+  :return $t
+}
+:put [$parseIso8601 "2026-04-30T12:00:00Z"];   # => 2939w12:00:00
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 89. :totime SILENTLY DISCARDS TIMEZONE OFFSET                               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# :totime accepts most TZ markers (Z, GMT, UTC, +HHMM, -HHMM, even garbage
+# like "+abc" or "PST") but performs NO offset arithmetic — the wall-clock
+# value is returned as-is regardless of timezone. Treating a "+02:00" timestamp
+# as if it were converted to local/UTC produces silent off-by-N-hours bugs.
+# ✗ WRONG:
+# :local t [:totime "2026-04-30 14:00:00+0200"]; # => 2939w14:00:00 (NOT 12:00)
+# # Caller assumed TZ was applied — silent 2-hour bug.
+# :local t [:totime "2026-04-30 12:00:00 garbage"]; # => 2939w12:00:00 (!! "garbage" swallowed)
+# ✓ CORRECT — apply offset arithmetic manually; treat TZ marker as documentation only:
+:local raw [:totime "2026-04-30 14:00:00"];   # naive parse
+:local utc ($raw - 02:00:00);                  # subtract +0200 manually for UTC
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 90. :totime NIL CHECK MUST USE [:typeof], NOT = nil                         │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# :totime returns nil silently on invalid input. Comparing the result to the
+# nil keyword via `=` returns FALSE even when the value is genuinely nil
+# (because nil interpolates to empty string in this context). Use
+# `[:typeof $x] = "nil"` for nil-safety. Same idiom applies to any function
+# whose failure sentinel is nil (:tonum on bad input, :toip on bad input, etc.).
+# ✗ WRONG:
+# :local t [:totime $userInput];
+# :if ($t = nil) do={ :error "bad timestamp"; } # NEVER fires (false even when nil)
+# ✓ CORRECT:
+:local t [:totime $userInput];
+:if ([:typeof $t] = "nil") do={ :error ("bad timestamp: " . $userInput); }
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 91. :resolve vrf= IS NOT A VALID PARAMETER ON 7.23rc2                       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# A 7.15-era changelog mentioned VRF support for :resolve, but on 7.23rc2 the
+# parameter is rejected with "bad parameter vrf". The accepted parameters are
+# domain-name=, type=, and server= only. VRF control happens at the DNS
+# service level (/ip dns set vrf=...), not at the :resolve call.
+# ✗ WRONG:
+# :put [:resolve "google.com" vrf=main];        # => bad parameter vrf
+# :put [:resolve "google.com" vrf=mgmt];        # => bad parameter vrf
+# ✓ CORRECT — set DNS service VRF once at config time:
+# /ip dns set vrf=mgmt
+:put [:resolve "google.com" type=ipv4 server=8.8.8.8];
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 92. PASSING do= OR on-error= AS A VARIABLE (REJECTED ON 7.19+)              │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Since 7.19 RouterOS strictly validates do= and on-error= arguments and rejects
+# any indirect form: do=$var, do=$fn, on-error=$handler. Even a properly-built
+# `:local fn do={...}` cannot be passed via `do=$fn` — the engine demands an
+# inline {...} literal at the parse site. The error is "invalid value for
+# argument do (...)" and is NOT catchable (parser-level, preempts execution).
+# Pre-7.19 silently accepted these forms; 7.19+ aborts the whole script.
+# ✗ WRONG:
+# :local handler do={ :put ("err " . $i); }
+# :foreach i in=({1;2}) do={ :error "x" } on-error=$handler;
+# # => Script Error: invalid value for argument on-error
+# :local body do={ :put $i; }
+# :foreach i in=({1;2}) do=$body;             # => same error
+# ✓ CORRECT — keep blocks inline; if reusable, call a global function from inside:
+:global myHandler do={ :put ("handle " . $1); };
+:foreach i in=({1;2;3}) do={
+  :if ($i = 2) do={ :error "x"; };
+} on-error={ [$myHandler $i]; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 93. ASSUMING LOOP on-error= EXPOSES THE ERROR MESSAGE                       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# The 7.19 :foreach/:for on-error={...} handler runs in the LOOP scope (loop
+# iterator and outer locals visible) but the raised error message is NOT bound
+# to any variable inside the handler. None of $1, $err, $e, $errVar, $error,
+# $errstr, $message, $reason, $exception resolve. The handler is fire-and-forget.
+# Named-binding syntaxes (on-error errVar={...}, error-var=name) all parse-error.
+# ✗ WRONG:
+# :foreach i in=({1;2}) do={ :error "boom" } on-error={ :put $err; };
+# # $err is "nothing"
+# :foreach i in=({1;2}) do={ :error "boom" } error-var=msg on-error={ :put $msg; };
+# # => Script Error: bad parameter error-var
+# ✓ CORRECT — capture via outer :onerror + re-raise from handler, OR use the
+# loop iterator (which IS bound to the failing iteration):
+:onerror outer in={
+  :foreach i in=({1;2;3}) do={
+    :if ($i = 2) do={ :error "primary"; };
+  } on-error={ :error ("rethrow at " . [:tostr $i]); };
+} do={ :log error ("loop failed: " . $outer); };
+# Or just log the failing iterator (no message available):
+:foreach i in=({1;2;3}) do={ :if ($i = 2) do={ :error "x"; } } on-error={
+  :log warning ("iter " . $i . " failed");
+}
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 94. USING LOOP on-error= TO TERMINATE THE LOOP ON FIRST ERROR               │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# The DEFAULT semantic of :foreach/:for on-error={...} is CONTINUE: after the
+# handler runs, the loop steps to the next iteration. This is the OPPOSITE of
+# :onerror in={...} do={...} (catch-once-and-exit) and the OPPOSITE of
+# :do{} on-error={} (try/catch). LLMs that read "on-error" as "catch and stop"
+# will silently let a loop iterate over hundreds of failing items.
+# ✗ WRONG:
+# :foreach i in=({1;2;3;4;5}) do={
+#   :if ($i = 2) do={ :error "boom"; };           # writer expected loop to STOP
+#   /file/some-side-effect $i;
+# } on-error={ :log error "stop"; };
+# # Reality: i=2 errors -> handler logs -> i=3,4,5 ALL still execute
+# ✓ CORRECT — :break inside the handler stops on first error:
+:foreach i in=({1;2;3;4;5}) do={
+  :if ($i = 2) do={ :error "boom"; };
+} on-error={
+  :log error ("stop at " . $i);
+  :break;                                         # 7.22+; exits the foreach
+};
+# Or :return inside a function body to terminate the function.
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 95. EXPECTING OUTER :onerror TO CATCH ERRORS FROM A LOOP WITH on-error={}   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# When a :foreach/:for has its own on-error={...}, the error is fully consumed
+# there. An enclosing :onerror outer in={...} do={...} does NOT fire unless the
+# handler explicitly re-raises via :error. Library users coming from try/catch
+# languages assume the outer always wins; in 7.19+ it does not.
+# ✗ WRONG:
+# :onerror caught in={
+#   :foreach i in=({1;2;3}) do={ :if ($i = 2) do={ :error "boom"; } }
+#   on-error={ :put "inner-handler"; };
+# } do={ :put ("OUTER caught: " . $caught); };
+# # Output: "inner-handler" — outer's do={} body NEVER runs.
+# ✓ CORRECT — drop inner on-error= (let outer catch), OR re-raise from handler:
+:onerror caught in={
+  :foreach i in=({1;2;3}) do={
+    :if ($i = 2) do={ :error "boom"; };
+  } on-error={
+    :log warning ("iter " . $i . " failed, re-raising");
+    :error ("loop-failed-at-" . [:tostr $i]);
+  };
+} do={ :put ("OUTER caught: " . $caught); };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 96. USING dsv.remap ON :deserialize OR ON FLAT (NON-DICT) ARRAYS            │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# The 7.18 dsv.remap option is RECOGNIZED ONLY by :serialize, and ONLY when
+# the value is an array of dictionaries (e.g. [/interface print as-value]).
+# Passing it to :deserialize is a syntax error (parse-time, NOT catchable).
+# Passing it to :serialize on a flat scalar array errors "input not an array";
+# on an array of arrays it silently emits "". The CORRECT inverse for
+# :deserialize is dsv.array (header -> array-of-dicts) or dsv.plain (no header).
+# ✗ WRONG:
+# :deserialize from=dsv value=$csv delimiter="," options=dsv.remap;
+# # => Script Error: syntax error (parse-time, not catchable)
+# :serialize to=dsv value=({1;2;3}) delimiter="," options=dsv.remap;
+# # => Script Error: input not an array
+# ✓ CORRECT — forward + reverse with the proper option pair:
+:local rows [/interface print as-value];
+:local csv  [:serialize to=dsv value=$rows delimiter="," options=dsv.remap];
+:local back [:deserialize from=dsv value=$csv delimiter="," options=dsv.array];
+:put (($back->0)->"name");                       # access first row's "name" col
+:local matrix [:deserialize from=dsv value="1,2,3\n4,5,6" delimiter="," options=dsv.plain];
+:put (($matrix->1)->2);                          # row 1, col 2 -> 6
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 97. DRY-RUN IMPORT WITHOUT verbose=yes/progress (7.16+)                     │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# /import dry-run is verbose-only — using it without verbose=yes/progress raises
+# a catchable error. Library users often expect dry-run to be a standalone flag
+# that suppresses output too — it isn't.
+# ✗ WRONG:
+# /import file-name="config.rsc" dry-run;
+# # => Error: "dry-run parameter cannot be used in non-verbose mode"
+# ✓ CORRECT — pair dry-run with one of the verbose modes:
+/import file-name="config.rsc" verbose=yes dry-run;       # full announcement
+/import file-name="config.rsc" verbose=progress dry-run;  # output-only (quieter)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 98. dry-run=yes INSTEAD OF BARE dry-run FLAG (7.16+)                        │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# /import dry-run is a bare flag, NOT a key=value parameter. Writing
+# dry-run=yes raises a parse error ("expected end of command") that the LLM
+# might misdiagnose as a script syntax problem. Stacking the flag
+# (dry-run dry-run) raises "bad parameter dry-run".
+# ✗ WRONG:
+# /import file-name="config.rsc" verbose=yes dry-run=yes;
+# # => Parse error: expected end of command at "=yes"
+# ✓ CORRECT — bare flag, no value:
+/import file-name="config.rsc" verbose=yes dry-run;
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 99. TRUSTING DRY-RUN TO CATCH RUNTIME ERRORS                                │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# dry-run only validates SYNTAX. It does NOT execute commands, so it cannot
+# detect missing interfaces, duplicate firewall rules, IP collisions, or
+# cross-field semantic problems. LLMs that gate "safe to apply" decisions on
+# dry-run success will deploy broken configurations.
+# ✗ WRONG:
+# # Trusting dry-run = "no errors" => safe to apply
+# :onerror e in={
+#   /import file-name="risky.rsc" verbose=yes dry-run;
+# } do={ :error "stop"; }
+# /import file-name="risky.rsc";   # NO! dry-run only checked syntax
+# ✓ CORRECT — dry-run is a syntax pre-check; ALWAYS combine with safe-mode and
+# explicit post-condition verification:
+/safe-mode take on-error=unroll;
+/import file-name="risky.rsc" verbose=yes;
+# Verify post-conditions (interface up, route added, etc.)
+:if ($postConditionGood) do={ /safe-mode release; } else={ /safe-mode unroll; }
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 100. EXPECTING SCRIPT-LEVEL :error TO ABORT SAFE-MODE AUTO-COMMIT (7.18+)   │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# In non-PTY scripted contexts, the 7.18+ safe-mode handler always auto-UNROLLS
+# pending changes when the script terminates without an explicit
+# /safe-mode release. Even on-error=release does NOT change this — the
+# on-error= parameter only governs TRUE network/session disconnects, NOT
+# graceful script ends.
+# ✗ WRONG:
+# /safe-mode take on-error=release;
+# /ip firewall filter add chain=input action=accept;
+# # script ends here, expecting changes to commit because on-error=release
+# # REALITY: handler unrolls, changes are gone
+# ✓ CORRECT — explicit /safe-mode release REQUIRED to commit in scripts:
+/safe-mode take on-error=unroll;
+/ip firewall filter add chain=input action=accept;
+/safe-mode release;
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 101. RELYING ON :onerror TO CATCH RELEASE/UNROLL ON INACTIVE SAFE-MODE      │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# /safe-mode release and /safe-mode unroll on an inactive safe-mode session
+# print "Safe Mode has not been taken. Action aborted." but do NOT raise a
+# catchable error. :onerror's do={} body does NOT execute; the next statement
+# runs normally. LLMs that wrap release in :onerror to "handle already-released
+# state" are writing dead code.
+# ✗ WRONG:
+# :onerror e in={ /safe-mode release; } do={ :put "never runs"; }
+# ✓ CORRECT — guard with /safe-mode get enabled, OR ignore the harmless message:
+:if ([/safe-mode get enabled]) do={ /safe-mode release; }
+# OR: just call release and rely on execution continuing past the message.
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 102. ASSUMING /system script run BOUNDARY ENDS SAFE-MODE                    │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# /system script run does NOT spawn a separate session. Safe-mode taken inside
+# the inner script is INHERITED by the calling session and persists after the
+# script-run returns. Inner scripts that take but don't release LEAK safe-mode
+# up to the caller.
+# ✗ WRONG:
+# /system script add name="inner" source={
+#   /safe-mode take on-error=unroll;
+#   /interface ether set ether1 comment="X";
+# }
+# /system script run inner;
+# :put [/safe-mode get enabled];           # => true (caller still in safe-mode!)
+# ✓ CORRECT — inner script must release explicitly, OR caller must own safe-mode:
+/system script add name="inner" source={
+  /safe-mode take on-error=unroll;
+  /interface ether set ether1 comment="X";
+  /safe-mode release;                       # always release in inner scripts
+}
+/system script run inner;
+

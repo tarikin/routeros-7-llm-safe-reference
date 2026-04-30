@@ -24,6 +24,14 @@
 :put ([:len "abc"]); ; # => 3 (length)
 :put ([:timestamp]); ; # => current timestamp
 :put ([:time]); ; # => seconds since epoch
+# Line-ending normalization standalones (7.14+) — equivalent to :convert transform=lf/crlf
+:put ([:tolf "a\r\nb"]); ; # => "a\nb"     (CRLF / bare CR -> LF)
+:put ([:tocrlf "a\nb"]); ; # => "a\r\nb"   (LF / bare CR -> CRLF; idempotent on CRLF)
+# Note: :tolower / :toupper do NOT exist; use :convert transform=lc / transform=uc (7.16+)
+# :nothing keyword — explicit empty/sentinel value (typeof=nil, len=0, concat→"")
+:put [:typeof [:nothing]];   ; # => nil
+:put [:len [:nothing]];      ; # => 0
+:put ([:nothing] . "tail");  ; # => "tail"   (concat treats it as "")
 :if (condition) do={ :put ("true") } else={ :put ("false") };
 
 # Code blocks use curly braces and require semicolons
@@ -94,6 +102,14 @@
 :global fw ( [/ip firewall filter print as-value]->0 );
 :put [:serialize to=json value=$fw];
 
+# :grep (7.14+) — runs script= and counts STDOUT lines matching pattern= regex
+# NOT a string utility. script= is RouterOS source EXECUTED. pattern= is regex (case-sensitive).
+# Stdout from script is still echoed to caller. Returns num (line-count, not match-count).
+:put [:grep script="/interface print" pattern="ether"];   ; # e.g. => 2
+:put [:grep script=":put a; :put b; :put c" pattern="b"]; ; # => 1
+# script= accepts: string OR code-block ({...}). Does NOT accept :parse'd code, fn var, num, bool.
+# pattern="" → "invalid regex pattern" (error). For substring search use [:find $s "needle"] or ~.
+
 # JSON & DSV
 :put [:serialize to=json value=$arr];
 :put [:deserialize from=json value="[\"x\",\"y\"]"];
@@ -115,7 +131,8 @@
 
 # SCRIPTS & ENV
 /system script run "myScript";
-/environment print; 
+/environment print;        # use this — NOT the [:environment] callable (returns nil, no-op).
+# [:terminal] / [:environment] are interactive-only stubs in script context (return nil).
 
 # MERGE ARRAYS
 :global arr2 ({1;2;3},5);
@@ -128,7 +145,17 @@
 }
 
 # BEHAVIOR & EXIT
+# :lock (7.16+, interactive only) — locks the local console screen; takes optional delay=<time>
+# In script context (/import, ros-deploy, /system script run) :lock is a NO-OP that returns nil
+# immediately (verified: [:time {:lock delay=5s}] elapses ~20us). Use :delay if you want a pause.
+# :lock; :lock delay=10s; :lock 10s;        # all return nil in scripts
 :onerror err in={ :resolve "no-such-domain" } do={ :put "Error => $err" };
+# :resolve type= (7.15+) selects ADDRESS FAMILY {ipv4|ipv6|any|any6}, NOT DNS record-type.
+# Record-type names (A, AAAA, MX, TXT, NS, CNAME, SOA, SRV, PTR) are REJECTED.
+:put [:resolve "google.com" type=ipv4];   # => 142.251.142.238 (typeof=ip)
+:put [:resolve "google.com" type=ipv6];   # => 2a00:1450:400f:802::200e (typeof=ip6)
+# :resolve <ipliteral> does PTR automatically:
+:put [:resolve "8.8.8.8"];                # => dns.google.
 :if ($abortCondition=true) do={ :log error "Aborting"; :quit; };
 
 # DO { } WHILE=(condition)
@@ -143,6 +170,23 @@
   :if ([:typeof $i]="str" || $i~"regex") do={ :put "Is string" };
 };
 
+# :range (7.17+) — generate ascending/descending integer arrays
+# Signature: [:range from=<int> to=<int>]  (NO step= parameter; use :for for stride)
+:put [:range from=1 to=5];          ; # => 1;2;3;4;5
+:put [:range from=5 to=1];          ; # => 5;4;3;2;1   (descending — :foreach iterates in order)
+:put [:range from=7 to=7];          ; # => 7           (single-element array)
+:put [:range -3 3];                 ; # => -3;-2;-1;0;1;2;3   (2-positional from to also works)
+# Hard cap: 1,000,000 elements. Beyond that → "size of the ranged array is too large".
+:foreach i in=[:range from=1 to=10] do={ :put $i };  # canonical iteration idiom
+# step= does NOT exist on :range; emulate via :foreach + modulo, or use :for from=A to=B step=S:
+:for i from=1 to=10 step=2 do={ :put $i };           ; # => 1 3 5 7 9
+# IPv6 NOT accepted; IP/time auto-coerced to int. Result element type is num.
+# :rndnum / :rndstr — random primitives
+:put [:rndnum from=1 to=10];        ; # => 1..10 inclusive (typeof=num)
+:put [:rndstr length=8];            ; # => 8 chars from [A-Za-z0-9] (default len=16)
+# CAUTION: [:rndnum from=10 to=1] does NOT error; returns garbage int64. Always order from<=to.
+# :rndstr charset is FIXED; no source=/alphabet=/chars=/type= parameters on 7.23rc2.
+
 # RETRY COMMAND
 :if ([/file print count-only where name=$ramdiskName type=disk]=0) do={
   :retry command={
@@ -153,7 +197,8 @@
   };
 };
 
-# EXECUTE (async)
+# EXECUTE (async) — see also async.rsc for full :execute / :time / :jobname surface
+# :exec is a parser alias of :execute (same arguments, same return type=id).
 :execute ("/certificate export-certificate $cert export-passphrase=\"$pass\" file-name=\"out_$cert\" type=pkcs12");
 :delay 3s; :log info "Exported $cert";
 

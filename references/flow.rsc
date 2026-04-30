@@ -149,12 +149,35 @@
 :global fnStr do={ :return "text"; };   # => str
 :global fnArr do={ :return {1;2}; };    # => array
 
-# RULE 7.3: :return without value = ERROR!
-# :return;                              # ERROR: missing value(s) of argument(s)
+# RULE 7.3: :return without value RAISES "missing value of argument" error
+# Empirically verified on 7.23rc2: bare :return; (in fn, in :do block, in :if
+# branch, in :foreach, in :onerror handler, top-level) all raise:
+#   Script Error: missing value(s) of argument(s) value (:return; line N)
+# The 7.17 changelog note "console - execute :return command without error"
+# refers to a narrower internal fix; bare :return; is STILL a runtime error
+# under all script-execution contexts tested (import, /system script run,
+# scheduler-equivalent). Use :return ""; or :return value="" for empty exit.
+# :return;                              # ERROR (all versions through 7.23rc2)
 :return "";                             # Use empty string instead
+# Equivalent named-argument form (returns str ""):
+:global fnReturnEmpty do={ :return value=""; };
 
 # RULE 7.4: :return in :if block for ternary pattern
 :local x [:if ($cond) do={ :return "a"; } else={ :return "b"; }];
+
+# RULE 7.5: :return is CATCHABLE — bare :return; raises a runtime error
+# that :onerror can capture (the error type is the same "missing value"
+# class as any other runtime error in 7.x):
+:global fnBareReturn do={ :return; };
+:onerror e in={ [$fnBareReturn]; } do={
+  :put $e;                              # captures: missing value(s) of argument(s) value...
+};
+
+# RULE 7.6: :return X at top level (NOT inside a fn) raises X as the error
+# message — RouterOS treats :return at script-top as throw-with-value:
+# :return "early";                      # Script Error: early (:import; line 1)
+# Use :return only INSIDE :global/:local fn definitions; otherwise prefer
+# :error "msg"; (catchable) or :exit; (silent termination, 7.22+).
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      8. :error / :quit / :exit                              │
@@ -257,6 +280,126 @@
 :if ([$check 10]) do={ :put "big"; };
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
+# │                      12. LOOP-LEVEL ON-ERROR (7.19+)                        │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# RULE 12.1: :foreach and :for accept on-error={...} (7.19+)
+# Default semantic: CONTINUE — after the handler runs, the loop iterates the next item.
+# Handler runs ONLY when the body raises an error; never on a clean iteration.
+:foreach i in=({1;2;3}) do={
+  :if ($i = 2) do={ :error "boom"; };
+  :put ("body " . $i);
+} on-error={ :put ("handler at " . $i); };
+# => body 1
+# => handler at 2
+# => body 3        (loop continued past the error!)
+
+# RULE 12.2: :for on-error= mirrors :foreach
+:for i from=1 to=5 do={
+  :if ($i = 3) do={ :error "fail"; };
+  :put ("for " . $i);
+} on-error={ :put ("err i=" . $i); };
+
+# RULE 12.3: :while does NOT accept on-error= (parse error). Use outer :onerror.
+# :while ($x < 5) do={ ... } on-error={ ... };          # Script Error: syntax error
+
+# RULE 12.4: :do {} while=() on-error={...} INHERITS the :do{} try/catch shape, NOT the
+# new continue-on-error loop semantics. Handler fires once, loop ABORTS.
+:local k 0;
+:do {
+  :set k ($k + 1);
+  :if ($k = 2) do={ :error "stop"; };
+  :put ("do " . $k);
+} while=($k < 4) on-error={ :put ("do-handler k=" . $k); };
+# => do 1
+# => do-handler k=2          (loop terminated; k=3,4 never reached)
+
+# RULE 12.5: Error message is NOT bound in the handler — there is NO $err / $e / $errVar.
+# Named-binding syntaxes ALL fail at parse time. Handler is fire-and-forget; only the loop
+# iterator (and outer locals/globals) are visible.
+:foreach i in=({1;2}) do={ :error "boom"; } on-error={
+  # $err, $e, $errVar, $error, $errstr, $message — all empty/nothing
+  :put ("typeof i=" . [:typeof $i]);    # => num  (loop iterator IS visible)
+};
+
+# RULE 12.6: To propagate the error, re-raise via :error inside the handler
+:onerror outer in={
+  :foreach i in=({1;2;3}) do={
+    :if ($i = 2) do={ :error "primary"; };
+  } on-error={
+    :error ("rethrown at " . [:tostr $i]);
+  };
+} do={ :put ("outer caught: " . $outer); };
+# => outer caught: rethrown at 2 (:error; line N)
+
+# RULE 12.7: Outer :onerror does NOT see the error if the handler doesn't re-raise
+:onerror outer in={
+  :foreach i in=({1;2}) do={ :error "boom"; } on-error={ :put "consumed"; };
+} do={ :put "NEVER PRINTED"; };
+# => consumed                (outer's do={} body never runs)
+
+# RULE 12.8: :break inside on-error= exits the loop after the handler
+:foreach i in=({1;2;3;4;5}) do={
+  :if ($i = 3) do={ :error "x"; };
+  :put ("body " . $i);
+} on-error={ :put ("stop at " . $i); :break; };
+# => body 1, body 2, "stop at 3"  — body 4/5 never run
+
+# RULE 12.9: :return inside on-error= exits the enclosing function
+:local fn do={
+  :foreach i in=({1;2;3}) do={
+    :if ($i = 2) do={ :error "x"; };
+  } on-error={ :return "stopped"; };
+  :return "ran-to-end";
+};
+:put [$fn];                             # => stopped
+
+# RULE 12.10: Multiple errors in one loop fire the handler EACH time (default-continue)
+:local cnt 0;
+:foreach i in=({1;2;3;4;5}) do={
+  :if (($i = 2) || ($i = 4)) do={ :error "x"; };
+} on-error={ :set cnt ($cnt + 1); };
+:put ("errors: " . $cnt);               # => errors: 2
+
+# RULE 12.11: Built-in command errors (not just :error) are caught
+:foreach name in=({"nonexistent-iface-xyz"}) do={
+  /interface get $name name;
+} on-error={ :put ("missing iface: " . $name); };
+
+# RULE 12.12: :foreach k,v with on-error: BOTH $k and $v visible in handler
+:local d ({a=1;b=2;c=3});
+:foreach k,v in=$d do={
+  :if ($v = 2) do={ :error "x"; };
+} on-error={ :put ("handler k=" . $k . " v=" . $v); };
+
+# RULE 12.13: Parameter ORDER is flexible — on-error= may come before or after do=
+:foreach i in=({1;2}) on-error={ :put "h"; } do={ :error "x"; };
+
+# RULE 12.14: NEWLINE between } and on-error= is a parse error
+# :foreach i in={1} do={...}\n on-error={...};        # Script Error: syntax error
+# Keep the construct on a single logical line.
+
+# RULE 12.15: Empty handler suppresses errors silently
+:foreach i in=({1;2;3}) do={
+  :if ($i = 2) do={ :error "x"; };
+  :put ("body " . $i);
+} on-error={ };                          # legal; consumes errors with no side-effect
+# => body 1, body 3
+
+# RULE 12.16: STRICT ARGUMENT VALIDATION (7.19+)
+# do= and on-error= now REQUIRE an inline {...} literal at the parse site. Indirection via
+# variable — even when the variable holds a valid block — is REJECTED.
+# :local fn do={ :put "x"; };
+# :foreach i in=({1;2}) do=$fn;                       # Script Error: invalid value for argument do
+# :if (true) do=$fn;                                  # same
+# :foreach i in=({1;2}) do={...} on-error=$h;         # Script Error: invalid value for argument on-error
+# Workaround: keep the block inline; if reusable, call a global function from inside it:
+:global handler do={ :put ("h: " . $1); };
+:foreach i in=({1;2}) do={
+  :if ($i = 2) do={ :error "x"; };
+} on-error={ [$handler $i]; };
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      QUICK REFERENCE TABLE                                  │
 # └─────────────────────────────────────────────────────────────────────────────┘
 #
@@ -270,12 +413,15 @@
 # │ :do while          │ Post-test, AT LEAST ONCE execution                      │
 # │ :break             │ Exits :for/:foreach/:while early (7.22+)                │
 # │ :continue          │ Skips to next iteration (7.22+)                         │
-# │ :return            │ MUST have value, use "" for empty                       │
+# │ :return            │ Bare :return; raises "missing value" error (all ver-    │
+# │                    │ sions); use :return ""; / :return value=""; for empty   │
 # │ :error             │ Catchable exception                                     │
 # │ :quit              │ NOT catchable, terminates script (prints "interrupted") │
 # │ :exit              │ NOT catchable, terminates script silently (7.22+)       │
 # │ :onerror           │ Returns bool, catches runtime errors only               │
 # │ :retry             │ Must be inside :onerror block                           │
+# │ :foreach on-error= │ 7.19+; default = CONTINUE; no error variable bound;     │
+# │ :for on-error=     │ :while is NOT supported; :do/while uses try/catch shape │
 # └────────────────────┴─────────────────────────────────────────────────────────┘
 #
 # ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -285,7 +431,8 @@
 # │ ✗ :elseif DOES NOT EXIST (use nested :if in else)                            │
 # │ ✗ switch/case DOES NOT EXIST                                                 │
 # │ ✗ goto DOES NOT EXIST                                                        │
-# │ ✗ :return without value is ERROR                                             │
+# │ ✗ :return without value still raises "missing value" error on 7.23rc2 —      │
+# │   use :return ""; or :return value=""; (catchable via :onerror)              │
 # │ ✗ String in condition is ERROR ("conditional is not boolean")                │
 # │ ✗ Short-circuit evaluation DOES NOT WORK                                     │
 # │ ✗ Syntax errors cannot be caught by :onerror                                 │
@@ -293,6 +440,12 @@
 # │ ✗ :exit is NOT catchable, NOT a loop primitive — use :break for loop-only    │
 # │ ✗ :exit accepts NO argument; :exit "msg" / :exit 1 are parse errors          │
 # │ ✗ :for with from>to STILL EXECUTES (wraps!)                                  │
+# │ ✗ :foreach/:for on-error={} default = CONTINUE (NOT catch-and-stop) — 7.19+  │
+# │ ✗ on-error={} handler does NOT bind error msg ($err/$e/$errVar all empty)    │
+# │ ✗ on-error={} SUPPRESSES error from outer :onerror (use :error to re-raise)  │
+# │ ✗ :while does NOT support on-error= (only :foreach and :for do)              │
+# │ ✗ :do/while on-error={} keeps OLD try/catch shape (one-shot exit, NOT cont)  │
+# │ ✗ do=$var / on-error=$var REJECTED on 7.19+ (require inline {...} literal)   │
 # └──────────────────────────────────────────────────────────────────────────────┘
 #
 # ══════════════════════════════════════════════════════════════════════════════
