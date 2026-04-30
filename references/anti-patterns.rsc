@@ -49,6 +49,7 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 5. :onerror BLOCKS SHOULD BE SINGLE-LINE                                   │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# :onerror itself is 7.13+ (do= optional 7.15+ — see #76).
 # ✗ PROBLEMATIC - May cause parse errors:
 # :onerror e in={
 #   :put "line1";
@@ -63,7 +64,8 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 6. :execute STDOUT IS NOT OBSERVABLE WITHOUT as-string — see #13            │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# All three :execute source forms are accepted on 7.23rc2:
+# :execute is baseline; as-string param is 7.8+. All three source forms are
+# accepted on 7.23rc2:
 #   (a) :execute "<src>"          (positional, fire-and-forget)
 #   (b) :execute script="<src>"   (named, fire-and-forget)
 #   (c) :execute script={ <blk> } (block, fire-and-forget)
@@ -170,6 +172,7 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 13. :execute SOURCE FORMS — positional / script= / script={...} — see #6    │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# :execute is baseline; as-string param requires 7.8+.
 # All three forms parse + execute on 7.23rc2 (REF-AUDIT-EXEC-SCRIPT-PARAM-ASYM
 # 2026-04-30):
 :execute ":put test";                            # (a) positional, detached
@@ -203,11 +206,12 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 16. :execute IS ASYNC - OUTPUT NOT IMMEDIATE                                │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# :execute exists from 7.0 baseline; as-string capture requires 7.8+.
 # ✗ WRONG - Expecting synchronous output:
 # :execute ":put \"hello\"";
 # :put "after";  # Runs before execute completes!
 
-# ✓ CORRECT - Add delay or use as-string:
+# ✓ CORRECT - Add delay or use as-string (7.8+):
 :execute ":put \"hello\"";
 :delay 500ms;
 :put "after";
@@ -529,6 +533,7 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 42. :onerror RETURNS BOOL - USE IT!                                         │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# :onerror is 7.13+ (do= optional 7.15+ — see #76).
 # ✓ USEFUL PATTERN - Use return value for conditionals:
 :local hadError [:onerror e in={ :resolve "invalid.xyz"; } do={}];
 :if ($hadError) do={
@@ -538,6 +543,7 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 43. :retry SUCCESS STOPS RETRYING                                           │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# :retry is 7.4+ (introduced); :onerror wrapper is 7.13+.
 # :retry stops when command succeeds (no error)
 :onerror e in={
   :retry command={
@@ -550,7 +556,8 @@
 # │ 44. ERROR MESSAGE ALWAYS INCLUDES LINE INFO                                 │
 # └─────────────────────────────────────────────────────────────────────────────┘
 # Error message format: "my-message (:error; line 18)"
-# Must parse string to extract original message
+# Format stabilised alongside :onerror introduction (7.13+); applies to bare
+# :error too. Must parse string to extract original message.
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #                    ASYNC ANTI-PATTERNS (from 400+ test verification)
@@ -559,6 +566,9 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 45. /tool fetch IS BLOCKING! (NOT ASYNC!)                                   │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# /tool fetch is baseline. From 7.13+, scripts calling fetch require the `ftp`
+# user policy on the running user (changelog 7.13). HTTP response headers can
+# be returned from 7.13+ as well.
 # ✗ WRONG - LLM assumes fetch is async:
 # /tool fetch url="http://example.com/file";  # BLOCKS SCRIPT!
 
@@ -569,6 +579,7 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 46. :execute RETURNS id TYPE, as-string RETURNS str                         │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# as-string return form requires 7.8+; bare :execute id-return is baseline.
 :local jobId [:execute ":put test"];
 :put [:typeof $jobId];                  # => id (async)
 
@@ -693,6 +704,7 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 57. :tonsec RETURNS NANOSECONDS, NOT SECONDS!                               │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# :tonsec is 7.12+ (introduced alongside the :totime/:tonum improvements).
 # ✗ WRONG - Assuming seconds:
 # :local sec [:tonsec 1h];  # Returns 3600000000000, NOT 3600!
 
@@ -703,10 +715,12 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 58. :timestamp IS NOT UNIX EPOCH SECONDS                                    │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# :timestamp is baseline; the :tonsec workaround below requires 7.12+ (#57).
+# 7.20+ adds :timestamp use-tz=yes for local-timezone output.
 # ✗ WRONG - Assuming epoch seconds:
 # :local epochSec [:timestamp];  # Returns "2920w5d07:03:45.ns", NOT number!
 
-# ✓ CORRECT - Convert via :tonsec:
+# ✓ CORRECT - Convert via :tonsec (7.12+):
 :local epochSec ([:tonsec [:timestamp]] / 1000000000);
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -782,6 +796,8 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 67. LOG TIME IS str TYPE (ISO FORMAT)                                       │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# Log time string is always str (NOT time). ISO formatting is the system-wide
+# default since v7.10 (per "time format → ISO standard" change).
 :local t [/log get $id time];
 :put [:typeof $t];  # => str (e.g. "2025-12-23 07:13:04")
 # Note: It is NOT time type!
@@ -1019,11 +1035,11 @@
 # │ 76. :onerror REQUIRES in= AND ERROR-VAR; do= IS OPTIONAL ON 7.15+           │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# 7.15 fixed :onerror behavior when do= is absent — formalising do= as optional.
-# Authors sometimes flip the requirements (omit in= or error-var). Empirically on
-# 7.23rc2: in= and the error variable name are MANDATORY on every version; do=
-# is optional on 7.15+ and behaves as `do={}` (suppresses the error, return value
-# is still bool).
+# :onerror was introduced in 7.13. Authors sometimes flip the requirements
+# (omit in= or error-var). 7.15 fixed the crash when do= was absent — formalising
+# do= as optional from 7.15+. Empirically on 7.23rc2: in= and the error variable
+# name are MANDATORY on every version (since 7.13); do= is optional on 7.15+
+# and behaves as `do={}` (suppresses the error, return value is still bool).
 # ✗ WRONG:
 # :onerror in={ :error "x" } do={ };       # missing value of argument error
 # :onerror e do={ :put "h" };              # missing value(s) of argument(s) in
@@ -1078,6 +1094,7 @@
 # │ 79. BYTE-ARRAY CONCATENATION ITERATES (ONE LINE PER BYTE)                   │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
+# :convert byte-array conversion target is 7.15+ (additional option 7.16+).
 # [:convert <x> to=byte-array] returns an `array` of nums (each byte 0-255), and
 # array operands of the . operator unfold ELEMENT-BY-ELEMENT in :put — so
 # ("prefix " . $ba) prints "prefix 97" then "prefix 98" etc., one line per byte.
@@ -1170,6 +1187,7 @@
 # │ 84. :grep IS NOT A STRING-SEARCH UTILITY — IT EXECUTES SCRIPT=              │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
+# :grep is 7.13+ (introduced).
 # The name suggests Unix grep on a string; on RouterOS, :grep RUNS its script=
 # argument (RouterOS source) and counts STDOUT LINES that match pattern= (regex).
 # Calling [:grep "haystack" "needle"] does NOT search the haystack — it tries to
@@ -1202,7 +1220,8 @@
 # │ 86. :rndstr CHARSET IS FIXED — NO source= / alphabet= ON 7.23rc2            │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# Developers may try [:rndstr length=20 source="0123456789"] or
+# :rndstr is baseline; 7.11+ defaults to length=16 from `0-9a-zA-Z` when no
+# length= given. Developers may try [:rndstr length=20 source="0123456789"] or
 # alphabet= / chars= / type= expecting custom-alphabet random strings; all
 # such parameters are rejected on 7.23rc2 with "expected end of command".
 # Default length is 16; fixed alphabet base62 = [0-9A-Za-z]
@@ -1273,10 +1292,12 @@
 # │ 89. :totime SILENTLY DISCARDS TIMEZONE OFFSET                               │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# :totime accepts most TZ markers (Z, GMT, UTC, +HHMM, -HHMM, even garbage
-# like "+abc" or "PST") but performs NO offset arithmetic — the wall-clock
-# value is returned as-is regardless of timezone. Treating a "+02:00" timestamp
-# as if it were converted to local/UTC produces silent off-by-N-hours bugs.
+# :totime ISO-timezone parsing was added in 7.18+ (changelog: ":totime now
+# accepts ISO 8601 timezone offset strings"). However: :totime accepts most TZ
+# markers (Z, GMT, UTC, +HHMM, -HHMM, even garbage like "+abc" or "PST") but
+# performs NO offset arithmetic — the wall-clock value is returned as-is
+# regardless of timezone. Treating a "+02:00" timestamp as if it were converted
+# to local/UTC produces silent off-by-N-hours bugs.
 # ✗ WRONG:
 # :local t [:totime "2026-04-30 14:00:00+0200"]; # => 2939w14:00:00 (NOT 12:00)
 # # Caller assumed TZ was applied — silent 2-hour bug.
@@ -1305,10 +1326,12 @@
 # │ 91. :resolve vrf= IS NOT A VALID PARAMETER ON 7.23rc2                       │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# A 7.15-era changelog mentioned VRF support for :resolve, but on 7.23rc2 the
-# parameter is rejected with "bad parameter vrf" (parse-time). The accepted
-# parameters are domain-name=, type=, and server= only. VRF control happens at
-# the DNS service level (/ip dns set vrf=...), not at the :resolve call.
+# The 7.21 changelog row "':resolve' now accepts VRF argument" is FALSIFIED
+# on 7.23rc2 — vrf= is rejected with "bad parameter vrf" (parse-time). The
+# accepted parameters are domain-name=, type=, and server= only. VRF control
+# happens at the DNS service level (/ip dns set vrf=...), not at the :resolve
+# call (the changelog entry likely refers to /tool fetch vrf= or
+# /tool ping vrf=, not the scripting :resolve builtin).
 # VERIFIED REF-AUDIT-RESOLVE-VRF 2026-04-30 7.23rc2 (vrf=main and
 # vrf=nonexistent both rejected identically).
 # ✗ WRONG:
