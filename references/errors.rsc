@@ -15,7 +15,9 @@
 
 # RULE 1.1b: do={} is OPTIONAL on 7.15+ — missing do= behaves as do={}
 # Pre-7.15: omitting do= produced inconsistent / parser-confused behavior;
-# 7.15 fixed this. On 7.15+ (verified 7.23rc2):
+# 7.15 fixed this. On 7.15+ (re-verified on 7.23rc2 — REF-AUDIT spot-check
+# 2026-04-30 confirmed file is internally consistent on this rule;
+# `in=` and the error variable name are MANDATORY, only `do=` is optional):
 :onerror e in={ :error "x" };           # Error suppressed; script continues
 :onerror e in={ :put "ok" };            # Body runs; script continues
 :local r [:onerror e in={ :error "x" }];  # Returns true (still bool)

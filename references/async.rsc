@@ -32,16 +32,21 @@
 # │                      2. :execute ERRORS ARE ISOLATED!                       │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# CRITICAL: Parent CANNOT catch child errors!
+# CRITICAL: Parent CANNOT catch :execute child errors.
+# Scope: this rule covers :execute (subprocess-isolated). It does NOT cover
+# :do {} on-error={} or :onerror in={...} do={...} which DO catch errors
+# raised in their own scope. The isolation boundary is the :execute call —
+# child runs as a detached job and errors stay inside the child.
 :local parentCaught false;
 :onerror e in={
   [:execute ":error \"child-error\"" as-string];
 } do={
   :set parentCaught true;
 };
-:put $parentCaught;                     # => false (NOT CAUGHT!)
+:put $parentCaught;                     # => false (NOT CAUGHT — child isolated)
 
-# For error status, use globals or file output
+# For error status, capture inside child via :global / /file write, or check
+# /system script job exit-status from the parent after polling.
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      3. /system script job                                  │

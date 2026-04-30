@@ -78,7 +78,9 @@
 # │                      4. NUMERIC STRING CONVERSION (CRITICAL!)               │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# RULE 4.1: Numeric strings CONVERT to JSON numbers by default!
+# RULE 4.1: Numeric strings CONVERT to JSON numbers by default (DESTRUCTIVE!)
+# VERIFIED REF-AUDIT-JSON-NUMERIC-COERCE / REF-AUDIT-JSON-NO-STRING-CONVERSION
+# 2026-04-30 7.23rc2.
 :put [:serialize to=json value="123"];    # => 123.000000 (NOT "123"!)
 :put [:serialize to=json value={"id"="456"}]; # => {"id":456.000000}
 
@@ -92,6 +94,8 @@
 :put [:typeof [:deserialize from=json value="\"192.168.1.1\""]]; # => ip
 :put [:typeof [:deserialize from=json value="\"01:30:00\""]];    # => time
 :put [:typeof [:deserialize from=json value="\"123\""]];         # => num (!)
+# Quoted-numeric inputs `"1"` ALSO coerce to num by default — to keep them as
+# strings, you MUST pass options=json.no-string-conversion (RULE 4.4).
 
 # RULE 4.4: Use json.no-string-conversion on deserialize too
 :put [:typeof [:deserialize from=json value="\"123\"" options=json.no-string-conversion]];
@@ -180,6 +184,9 @@
 :put ($tab1 = $tab2);                     # => true (identical bytes)
 
 # RULE 8.3: dsv.remap — flatten array-of-dicts to header-row + data rows (7.18+)
+# Header is sorted ALPHABETICALLY by key (NOT insertion order). Row values are
+# emitted in header-column order. VERIFIED REF-AUDIT-JSON-DSV-KEY-ORDERING
+# 2026-04-30 7.23rc2.
 # This is THE killer feature for tabular output of `print as-value`.
 :local rows ({{a=1;b=2};{a=3;b=4};{a=5;b=6}});
 :put [:serialize to=dsv value=$rows delimiter="," options=dsv.remap];
@@ -212,8 +219,10 @@
 # RULE 8.8: dsv.wrap-strings — wrap string values in quotation marks (7.18+; alone only)
 :put [:serialize to=dsv value=({"hi";"there"}) delimiter="," options=dsv.wrap-strings];
 # => "hi","there"
-# Note: combining dsv.remap with dsv.wrap-strings via options=(opt1,opt2) parses but
-# yields "Script Error: unsupported options" on 7.23rc2 — single option only for now.
+# dsv.remap and dsv.wrap-strings are MUTUALLY EXCLUSIVE — combining via
+# options=(dsv.remap,dsv.wrap-strings) raises catchable
+# `Script Error: unsupported options (:serialize; line N)`. Single option only.
+# VERIFIED REF-AUDIT-JSON-DSV-REMAP-WRAPSTR 2026-04-30 7.23rc2.
 
 # RULE 8.9: :deserialize from=dsv default — column-oriented dict (header -> array of values)
 :local back [:deserialize from=dsv value="a,b\n1,2\n3,4" delimiter=","];
