@@ -243,14 +243,20 @@
 :put [:tonum $clean];                 # => 100
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 19. [:typeof function] RETURNS "array", NOT "code"                           │
+# │ 19. [:typeof function] RETURNS "array" — :parse RETURNS "code" — see #50    │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# ✗ WRONG assumption:
-# :if ([:typeof $fn] = "code") do={ ... }  # Never true!
+# Two distinct invocable types coexist on 7.23rc2:
+#   do={ ... }   literal              → :typeof = "array"
+#   [:parse "..." ]                   → :typeof = "code" (see #50)
+# Both invoke the same way: [$f] / [$f arg=...]. #19 and #50 are complementary,
+# not contradictory.
+# ✗ WRONG assumption (do={} is NEVER "code"):
+# :if ([:typeof $fn] = "code") do={ ... }  # never true for do={...} fn literal
 
 # ✓ CORRECT:
 :global fn do={ :return 1; };
-:if ([:typeof $fn] = "array") do={ :put "is-function"; };
+:if ([:typeof $fn] = "array") do={ :put "is-do-fn"; };
+# VERIFIED REF-AUDIT-PARSE-TYPEOF 2026-04-30 7.23rc2
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 20. EMPTY ARRAY [] RETURNS TYPE "nil", NOT "array"                          │
@@ -339,11 +345,14 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 27. :return WITHOUT VALUE IS ERROR                                          │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# Empirically verified across all script contexts on 7.23rc2 — see #75 for the
+# 7.17 changelog wording that suggested otherwise (proven still false).
 # ✗ WRONG:
 # :global myFn do={ :return; };  # ERROR: missing value(s) of argument(s)
 
 # ✓ CORRECT:
 :global myFn do={ :return ""; };        # Empty string
+# VERIFIED REF-AUDIT-RETURN-NOVAL-7.23 2026-04-30 7.23rc2
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 28. STRING IN :if CONDITION IS ERROR                                        │
@@ -588,10 +597,15 @@
 [$fn "value"];
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 50. :parse RETURNS code TYPE                                                │
+# │ 50. :parse RETURNS code TYPE — do={...} RETURNS array — see #19             │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# Construction path determines the type. Both are invocable the same way.
 :global myFn [:parse ":put \"hello\""];
-:put [:typeof $myFn];                   # => code (not str!)
+:put [:typeof $myFn];                   # => code  (because [:parse ...])
+:global myFn2 do={ :put "hello" };
+:put [:typeof $myFn2];                  # => array (because do={...})
+[$myFn]; [$myFn2];                      # both invoke the same way
+# VERIFIED REF-AUDIT-PARSE-TYPEOF 2026-04-30 7.23rc2
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 51. :timestamp RETURNS time TYPE (NOT num!)                                 │
@@ -958,9 +972,9 @@
 # └─────────────────────────────────────────────────────────────────────────────┘
 
 # The 7.17 changelog "console - execute :return command without error" suggested
-# bare :return; would become valid. Empirically (verified 2026-04-30 on 7.23rc2):
-# bare :return; in EVERY context tested (top-level, fn body, :do, :if, :foreach,
-# :onerror handler) STILL raises:
+# bare :return; would become valid. Empirically (verified 2026-04-30 on 7.23rc2,
+# REF-AUDIT-RETURN-NOVAL-7.23): bare :return; in EVERY context tested (top-
+# level, fn body, :do, :if, :foreach, :onerror handler) STILL raises:
 #     Script Error: missing value(s) of argument(s) value (:return; line N)
 # The 7.17 fix appears to be a narrower internal compiler refactor; user-facing
 # behavior is unchanged. The error IS now catchable via :onerror — see #27 for
