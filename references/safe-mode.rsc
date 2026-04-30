@@ -83,14 +83,22 @@
 # │                      3. on-error MODES EXPLAINED                            │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# CRITICAL: on-error ONLY triggers on SESSION TERMINATION, NOT script errors!
+# CRITICAL (7.18+): the on-error= parameter ONLY governs TRUE-disconnect timing
+# (network drop, console close). In non-PTY scripted contexts the safe-mode
+# HANDLER fires on every script end (clean end, uncaught :error, :exit) and
+# AUTO-UNROLLS regardless of on-error=. Only an explicit /safe-mode release
+# can commit. See Section 14 for handler semantics.
+# REF-AUDIT-SM-ONERROR-RELEASE-NOOP 2026-04-30 7.23rc2.
 
 # on-error=unroll
-# ✓ Changes rolled back IF: session disconnects abnormally
-# ✗ NOT rolled back IF: script completes normally (even with :error)
+# ✓ Disconnect mid-session  → handler unrolls (matches parameter)
+# ✓ Clean script end         → handler unrolls (parameter agrees)
+# ✓ Uncaught :error / :exit  → handler unrolls
 
-# on-error=release  
-# ✓ Changes committed IF: session disconnects (normal or abnormal)
+# on-error=release
+# ✓ Disconnect mid-session  → handler releases (matches parameter)
+# ✗ Clean script end         → handler STILL UNROLLS (parameter ignored!)
+#   REF-AUDIT-SM-ONERROR-RELEASE-NOOP 2026-04-30 7.23rc2.
 
 # on-error=abort
 # ✓ Script aborts on error
@@ -141,8 +149,14 @@
 # RULE 5.3: Interactive terminal OR ssh -tt maintains session throughout
 # SSH -tt shell → take → make changes → disconnect = on-error handler triggered
 
-# RULE 5.4: Script completion = normal termination = no on-error trigger
-# The on-error handlers are for ABNORMAL session ends (connection loss)
+# RULE 5.4: Script completion fires the safe-mode HANDLER (7.18+, verified 7.23rc2)
+# Pre-7.18 lore claimed "normal completion does not trigger on-error handler"
+# — this is REFUTED on 7.18+. Clean script end, uncaught :error, and :exit
+# ALL fire the handler and auto-unroll pending changes unless an explicit
+# /safe-mode release was already issued. The on-error= parameter only matters
+# on TRUE network/session disconnects (no graceful end). See Section 14.
+# REF-AUDIT-SM-SCRIPT-END-ROLLS-BACK / REF-AUDIT-SM-ERROR-ROLLS-BACK /
+# REF-AUDIT-SM-EXIT-ROLLS-BACK 2026-04-30 7.23rc2.
 
 # RULE 5.5: Quit protection in interactive sessions
 # When exiting safe-mode session:
@@ -161,21 +175,45 @@
 # │                      6. EXCLUSIVE LOCKING & CONFLICTS                       │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# RULE 6.1: Safe-mode is EXCLUSIVE SYSTEM-WIDE
-# Only ONE session can hold safe-mode at a time.
-# If User A has safe-mode, User B (or another User A session) CANNOT take it.
+# RULE 6.1: Safe-mode is "exclusive" only against DIFFERENT users (verified 7.23rc2)
+# Only one session at a time can hold the "current" flag. Cross-USER second
+# `take` is rejected as a catchable error ("Safe Mode is taken by another user
+# (username). Action aborted."). HOWEVER, SAME-USER second `take` is NOT a
+# mutex — see RULE 6.5. Cross-user behavior NOT empirically re-verified in
+# Sprint 7 (only `ni` user available on lab).
 
-# RULE 6.2: Conflict Behavior
-# Attempting to take safe-mode while held results in ERROR:
-# "Safe Mode is taken by another user (username). Action aborted."
+# RULE 6.2: Conflict Behavior (cross-user)
+# Cross-user attempt to take safe-mode while held by ANOTHER USER raises a
+# CATCHABLE error: "Safe Mode is taken by another user (username). Action
+# aborted." (See RULE 6.5 for same-user behavior — completely different.)
 
 # RULE 6.3: Release/Unroll Protection
-# A session cannot release/unroll a safe-mode transaction owned by another session.
-# Output: "Safe Mode has not been taken. Action aborted."
+# A session cannot release/unroll a safe-mode transaction owned by another
+# session — prints "Safe Mode has not been taken. Action aborted." and is
+# NON-CATCHABLE; the script continues past the call. See RULE 12.5.
 
-# RULE 6.4: Uncommitted Changes Isolation
-# Changes made by the holding session are NOT visible to other sessions until released.
-# (Standard transaction isolation)
+# RULE 6.4: NO TRANSACTION ISOLATION (verified 7.23rc2 — refutes prior claim)
+# Changes made by the holding session ARE visible to other sessions
+# IMMEDIATELY, before release. Safe-mode provides ROLLBACK, NOT isolation.
+# Concurrent SSH/script sessions can read each other's IN-FLIGHT uncommitted
+# config changes mid-transaction. Do NOT assume mutual exclusion of reads.
+# REF-AUDIT-SM-NO-ISOLATION-MULTISESSION 2026-04-30 7.23rc2.
+
+# RULE 6.5: SAME-USER SECOND `take` STEALS AND COMMITS PRIOR TX (DANGER)
+# (verified 7.23rc2) Same-user second `take` from a different session SUCCEEDS
+# (returns bool:true), becomes the new owner, AND COMMITS the prior session's
+# pending changes — instead of aborting them. The first session's auto-unroll
+# on its own end then only rolls back the SECOND session's transaction. This
+# is fundamentally broken mutex semantics. Do NOT rely on safe-mode for
+# cross-process atomicity.
+# REF-AUDIT-SM-SAME-USER-CONTENTION 2026-04-30 7.23rc2.
+
+# RULE 6.6: owner=console is INVARIANT — useless for session attribution
+# Every non-PTY session reports owner=console; the field cannot identify
+# WHICH session holds safe-mode. Use /safe-mode print user: row instead, but
+# note even that does not disambiguate two sessions of the same user.
+# (PTY-side empirical equivalence not confirmed: RouterOS PTY ssh+cmd hangs.)
+# See new Section 14a "ISOLATION & MULTI-SESSION REALITY" below.
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      7. VERIFIED BEHAVIORS (SINGLE SESSION)                 │
@@ -193,10 +231,13 @@
 /safe-mode unroll;                         # "Unrolling Safe Mode... Success!"
 # Result: comment reverts to original (rolled back)
 
-# TEST 7.3: Double take behavior
+# TEST 7.3: Double take behavior (same session)
 /safe-mode take on-error=unroll;           # "Taking Safe Mode session... Success!"
-/safe-mode take on-error=unroll;           # "Taking Safe Mode session... Success!"
-# Result: No error - appears to restart transaction or no-op
+:local r [/safe-mode take on-error=unroll];# prints "Safe Mode is already active"
+:put [:typeof $r];                         # => nil (NOT bool, NOT error)
+# Result: no-op; ownership unchanged; second-call return is nil (NOT catchable).
+# REF-AUDIT-SM-DOUBLE-TAKE-NIL 2026-04-30 7.23rc2.
+# Cross-session same-user second take is DIFFERENT — see RULE 6.5.
 
 # TEST 7.4: release without take
 /safe-mode release;
@@ -257,19 +298,22 @@
 # │ • SNMP trap sends, email sends, fetch operations                               │
 # └────────────────────────────────────────────────────────────────────────────────┘
 #
-# VERIFIED TEST RESULTS:
-# ┌─────────────────────────────┬─────────────┬─────────────────────────────────┐
-# │ Operation                   │ Rolled Back │ Platform Tested                 │
-# ├─────────────────────────────┼─────────────┼─────────────────────────────────┤
-# │ /interface set comment      │ YES         │ CHR 7.21                   │
-# │ /ip pool add                │ YES         │ CHR 7.21                   │
-# │ /user add                   │ YES         │ CHR 7.21                   │
-# │ /system script add          │ YES         │ CHR 7.21                   │
-# │ /certificate add            │ NO          │ CHR 7.21                   │
-# │ :log info                   │ NO          │ CHR 7.21                   │
-# │ :global variable change     │ NO          │ CHR 7.21                   │
-# │ /file add                   │ YES         │ CHR 7.21 + RB750Gr3 7.21   │
-# └─────────────────────────────┴─────────────┴─────────────────────────────────┘
+# VERIFIED TEST RESULTS (re-confirmed 7.23rc2 unless noted):
+# ┌─────────────────────────────┬─────────┬───────────────────────────────────────┐
+# │ Operation                   │ Rolled  │ Anchor                                │
+# │                             │ Back    │                                       │
+# ├─────────────────────────────┼─────────┼───────────────────────────────────────┤
+# │ /interface ether set comment│ YES     │ REF-AUDIT-SM-INTERFACE-COMMENT-TRACKED│
+# │ /ip firewall filter add     │ YES     │ REF-AUDIT-SM-FIREWALL-TRACKED         │
+# │ /ip firewall address-list   │ YES     │ Sprint 7 (multiple probes)            │
+# │ /ip pool add                │ YES     │ CHR 7.21                              │
+# │ /user add                   │ YES     │ CHR 7.21                              │
+# │ /system script add          │ YES     │ CHR 7.21                              │
+# │ /certificate add            │ NO      │ REF-AUDIT-SM-CERT-NOT-TRACKED         │
+# │ :log info                   │ NO      │ REF-AUDIT-SM-LOG-NOT-TRACKED          │
+# │ :global variable change     │ NO      │ REF-AUDIT-SM-GLOBAL-NOT-TRACKED       │
+# │ /file add                   │ YES     │ CHR 7.21 + RB750Gr3 7.21              │
+# └─────────────────────────────┴─────────┴───────────────────────────────────────┘
 #
 # FILE OPERATIONS: Verified to rollback on CHR (virtual disk) and RouterBoard
 # (both root RAM and flash/ NAND storage). File metadata tracked in config.
@@ -294,22 +338,25 @@
 # │                      10. SCRIPT INTEGRATION                                 │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# RULE 10.1: :error behavior and safe-mode handler (version-gated)
-# Pre-7.18: :error does NOT trigger safe-mode on-error handler!
-#   /safe-mode take on-error=unroll; :error "x"  → changes PERSIST!
-# 7.18+: The safe-mode HANDLER fires on ALL script terminations including :error.
-#   :error → script terminates → handler auto-unrolls pending changes.
-#   EXCEPTION: if :error is CAUGHT by :onerror/:do and the script continues
-#   (does not terminate), the handler does NOT fire — fire only on termination.
+# RULE 10.1: Handler trigger conditions (7.18+, verified 7.23rc2)
+# The safe-mode HANDLER fires (auto-unrolls pending changes) on:
+#   - Clean script end without explicit /safe-mode release
+#       REF-AUDIT-SM-SCRIPT-END-ROLLS-BACK 2026-04-30 7.23rc2.
+#   - Uncaught :error reaching the top of the session
+#       REF-AUDIT-SM-ERROR-ROLLS-BACK 2026-04-30 7.23rc2.
+#   - :exit terminating the script
+#       REF-AUDIT-SM-EXIT-ROLLS-BACK 2026-04-30 7.23rc2.
+# The handler does NOT fire when :error is CAUGHT by :onerror/:do — the
+# session, in-flight changes, and ownership all persist past the catch.
+#   REF-AUDIT-SM-ERROR-CAUGHT-PERSIST 2026-04-30 7.23rc2.
 /safe-mode take on-error=unroll;
 /interface ether set ether1 comment="CHANGED";
 :error "Script error";
-# Pre-7.18: comment = "CHANGED" (NOT rolled back!)
-# 7.18+:    comment reverts to original (handler fires, auto-unrolls)
+# 7.18+: comment reverts to original (handler fires on uncaught :error)
 # NOTE: on-error= value does NOT affect handler behavior for non-PTY scripts.
-#       Normal script end, :error, :exit all trigger UNROLL regardless of on-error.
+#       Clean end, uncaught :error, :exit all trigger UNROLL regardless.
 
-# RULE 10.2: :onerror + safe-mode are INDEPENDENT
+# RULE 10.2: Caught :error does NOT trigger handler (verified 7.23rc2)
 :onerror e in={
   /safe-mode take on-error=unroll;
   /interface ether set ether1 comment="ONERROR-TEST";
@@ -317,14 +364,21 @@
 } do={
   :put "Caught: $e";
 };
-# Result: comment = "ONERROR-TEST" (persists!)
-# Safe-mode did NOT rollback on :error
+# Result: changes PERSIST during the catch block; safe-mode session stays
+# enabled=true / current=true. Explicit /safe-mode unroll inside do={} is
+# REQUIRED if a partial-state abort is desired. After do={} returns and the
+# script ends without release, the OUTER script-end handler then unrolls.
+# REF-AUDIT-SM-ERROR-CAUGHT-PERSIST 2026-04-30 7.23rc2.
 
 # RULE 10.3: /system script run shares the CALLING session (verified 7.23rc2)
 # /system script run does NOT spawn a separate session/transaction. Safe-mode
 # taken inside the script is INHERITED by the calling session and persists
 # after `/system script run` returns. The handler does NOT fire on inner
 # script end — it only fires when the OUTER session terminates.
+# Conversely: outer's auto-unroll silently rolls back inner script's
+# "successful" changes, even if the inner script ran to completion.
+# REF-AUDIT-SM-COUPLING-ROLLBACK-SCOPE / REF-AUDIT-SM-SCRIPT-RUN-INHERITS
+# 2026-04-30 7.23rc2.
 /system script add name="test" source={
   /safe-mode take on-error=unroll;
   /interface ether set ether1 comment="SCRIPT-TEST";
@@ -363,7 +417,11 @@
 /safe-mode take on-error=release;
 /ip firewall filter add chain=input action=accept;
 /safe-mode release;
-# Changes committed regardless of how script ends
+# CORRECT: Explicit /safe-mode release commits before script end.
+# WARNING (7.18+): on-error=release does NOT mean "auto-commit on script end".
+# In non-PTY scripted contexts, clean script end auto-UNROLLS regardless of
+# on-error= value. Only the explicit /safe-mode release above commits.
+# REF-AUDIT-SM-ONERROR-RELEASE-NOOP 2026-04-30 7.23rc2.
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      12. RETURN TYPES & ERROR HANDLING                      │
@@ -384,7 +442,9 @@
 # └─────────────────────┴───────────┴─────────────────────────────────────────────┘
 # NOTE: Earlier 7.21 testing found take→nil; 7.23rc2 shows bool:true. Version
 #       when this changed is unconfirmed — treat as 7.18+ (scriptable safe-mode).
-#       take when already-active still returns nil (prints "Safe Mode is already active").
+#       Already-active take returns nil (prints "Safe Mode is already active");
+#       see RULE 12.4. Cross-link: REF-AUDIT-SM-TAKE-RETURN /
+#       REF-AUDIT-SM-DOUBLE-TAKE-NIL 2026-04-30 7.23rc2.
 
 # TEST EVIDENCE:
 :put [:typeof [/safe-mode take]];       # => bool (value: true)
@@ -412,16 +472,20 @@
 # │ user                │ str       │ "admin" (username)                          │
 # └─────────────────────┴───────────┴─────────────────────────────────────────────┘
 
-# RULE 12.4: Double Take Behavior
-# When take is called while safe-mode is ALREADY ACTIVE (same session):
+# RULE 12.4: Double Take Behavior (SAME SESSION)
+# When take is called while safe-mode is ALREADY ACTIVE in the SAME session:
 # - Prints: "Safe Mode is already active"
 # - Returns: nil (no error thrown, no new take issued)
-# - Behavior: No-op (does NOT restart transaction)
+# - Behavior: No-op (does NOT restart transaction, ownership unchanged)
+# REF-AUDIT-SM-DOUBLE-TAKE-NIL 2026-04-30 7.23rc2.
 /safe-mode take on-error=release;
 :local r [/safe-mode take on-error=release];   # => "Safe Mode is already active"
 :put [:typeof $r];   # => nil
 /safe-mode release;
-# NOTE: Different from initial take which returns bool:true
+# NOTE: Different from initial take (bool:true, REF-AUDIT-SM-TAKE-RETURN).
+# CRITICAL contrast: SAME-USER second take from a DIFFERENT session is NOT
+# a no-op — it SUCCEEDS, steals ownership, AND commits the prior session's
+# pending changes. See RULE 6.5 / REF-AUDIT-SM-SAME-USER-CONTENTION.
 
 # RULE 12.5: Failure Catchability — CRITICAL nuance (verified 7.23rc2)
 # Not all "failures" are catchable. Two distinct categories:
@@ -434,6 +498,7 @@
 #     Each prints "Safe Mode has not been taken. Action aborted." (or
 #     "Safe Mode is already active") to stdout — :onerror does NOT trigger,
 #     statement after the call EXECUTES NORMALLY.
+#     REF-AUDIT-SM-RELEASE-INACTIVE-NONCATCH 2026-04-30 7.23rc2.
 #
 # (b) CATCHABLE via :onerror / :do on-error (raises real error):
 #     - /safe-mode get <invalid-property>     (raises catchable error)
@@ -455,34 +520,35 @@
 };
 # Output: "input does not match any value of value-name (...)"
 
-# RULE 12.6: :execute Scope Binding (CRITICAL!)
-# Safe-mode taken inside :execute is SCOPED TO THAT SUBPROCESS
+# RULE 12.6: :execute INHERITS the caller's safe-mode transaction (verified 7.23rc2)
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ BEHAVIOR: Safe-mode in :execute auto-releases when subprocess terminates   │
+# │ BEHAVIOR: :execute runs in the SAME safe-mode transaction as its caller    │
+# │ Async additions are rolled back when the OUTER session auto-unrolls        │
 # └─────────────────────────────────────────────────────────────────────────────┘
-
-# KEY DISCOVERY: :execute subprocess termination triggers on-error handlers!
-# This means on-error=unroll WORKS in :execute when subprocess errors out.
+# REF-AUDIT-SM-EXEC-MICROTX 2026-04-30 7.23rc2.
 
 # :execute return value depends on PTY:
 # - With PTY (ssh -tt):    Returns job ID (type: id, e.g. "*1CE")
 # - Without PTY (ssh):     Returns nothing (type: nothing)
 
-# VERIFIED BEHAVIORS:
-# 1. Changes visible to parent IMMEDIATELY (no isolation)
-# 2. Subprocess termination (normal or error) = session end = on-error triggered
-# 3. :error inside :execute = abnormal termination = on-error=unroll WORKS!
+# VERIFIED BEHAVIORS (7.23rc2):
+# 1. Changes are visible to parent IMMEDIATELY (no isolation — shared TX)
+# 2. :execute add inside an outer safe-mode session is rolled back when the
+#    OUTER session auto-unrolls (e.g. clean script end without release)
+# 3. The PTY-style "subprocess auto-release on termination" framing is
+#    superseded — non-PTY scripted contexts share the outer transaction
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │                      13. MICRO-TRANSACTIONS WITH :EXECUTE                   │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ADVANCED PATTERN: Use :execute for atomic rollback-capable operations
+# CAVEAT (7.23rc2): :execute DOES NOT create a separate safe-mode transaction.
+# It RUNS inside the caller's safe-mode session. Patterns below are useful for
+# observing intermediate state, but the outer session's handler is what
+# actually performs rollback when the OUTER script ends without release.
+# REF-AUDIT-SM-EXEC-MICROTX 2026-04-30 7.23rc2.
 # ═══════════════════════════════════════════════════════════════════════════════
-
-# Unlike normal script execution, :execute subprocess termination IS treated as
-# "session termination" for safe-mode purposes. This enables scripted rollback!
 
 # PATTERN 13.1: Atomic operation with automatic rollback on failure
 :local success true;
@@ -534,19 +600,25 @@
 # │                      ANTI-PATTERNS - LLM MUST AVOID!                        │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
-# ✗ ANTI-PATTERN 1: Assuming safe-mode rollback works in SSH commands
-# ssh router '/safe-mode take on-error=unroll; dangerous-change'
-# WRONG: Changes persist because script completes normally!
+# ✗ ANTI-PATTERN 1: PRE-7.18 only — no longer applies on 7.18+
+# Pre-7.18: ssh router '/safe-mode take on-error=unroll; dangerous-change'
+#   → take "succeeded" but state was immediately false; changes PERSISTED.
+# 7.18+: same SSH command WORKS — handler unrolls on script end. The actual
+# 7.18+ trap is the OPPOSITE: changes auto-UNROLL on script end unless
+# /safe-mode release is called explicitly. See PATTERN 11.3 / RULE 14.x.
 
 # ✗ ANTI-PATTERN 2: Using safe-mode for self-lockout protection in scripts
 # /safe-mode take on-error=unroll;
 # /interface set ether1 disabled=yes;  # LOCKS OUT IMMEDIATELY!
 # Safe-mode cannot protect against instant connectivity loss
 
-# ✗ ANTI-PATTERN 3: Expecting :error to trigger rollback
-# /safe-mode take on-error=unroll;
-# :if ($badCondition) do={ :error "abort"; };  # Does NOT rollback!
-# :error is script-level, not session-level
+# ✗ ANTI-PATTERN 3: PRE-7.18 only — :error DOES rollback on 7.18+
+# Pre-7.18: :error did NOT trigger handler.
+# 7.18+: UNCAUGHT :error fires handler → auto-unroll
+#   (REF-AUDIT-SM-ERROR-ROLLS-BACK).
+# CAVEAT: :error CAUGHT by :onerror/:do does NOT trigger handler — partial
+# state persists past the catch. REF-AUDIT-SM-ERROR-CAUGHT-PERSIST. If
+# rollback is desired inside a catch, call /safe-mode unroll explicitly.
 
 # ✗ ANTI-PATTERN 4: Using on-error=ask in scripts
 # /safe-mode take on-error=ask;  # Will hang or fail in scripts!
@@ -556,17 +628,22 @@
 # ssh router 'dangerous-change'  # NEW SESSION - safe-mode not active!
 # ssh router '/safe-mode unroll'  # "Safe Mode has not been taken. Action aborted."
 
-# ✗ ANTI-PATTERN 6: Expecting parent session protection from :execute safe-mode
-# :execute script={ /safe-mode take on-error=unroll; dangerous-change; }
-# # Parent makes more changes here expecting protection... WRONG!
-# WRONG: Safe-mode in :execute protects ONLY the subprocess, not the parent!
-# See Section 13 for CORRECT micro-transaction patterns using :execute.
+# ✗ ANTI-PATTERN 6: Confusing :execute scope on 7.18+
+# :execute does NOT have a private safe-mode transaction. It RUNS inside the
+# caller's safe-mode session — changes are visible immediately to all
+# sessions, and rollback is governed by the OUTER session's end. Treat
+# :execute as a vehicle for async work within the same transaction, NOT as
+# a sandbox. REF-AUDIT-SM-EXEC-MICROTX.
 
 # ✗ ANTI-PATTERN 7: Assuming safe-mode provides transaction isolation
 # /safe-mode take;
 # /interface set ether1 comment="new";
-# # Other sessions will see "new" IMMEDIATELY, before release!
+# # Other sessions see "new" IMMEDIATELY, mid-transaction, before release!
 # Safe-mode provides ROLLBACK capability, NOT read isolation.
+# Concurrent same-user `take` even STEALS ownership and commits prior
+# pending changes — see RULE 6.5.
+# REF-AUDIT-SM-NO-ISOLATION-MULTISESSION /
+# REF-AUDIT-SM-SAME-USER-CONTENTION 2026-04-30 7.23rc2.
 
 # ✗ ANTI-PATTERN 8: Expecting certificate operations to rollback
 # /safe-mode take on-error=unroll;
@@ -582,10 +659,12 @@
 # /safe-mode unroll;  # Email was SENT! HTTP request was MADE!
 # Safe-mode only tracks CONFIG changes, not external actions or side-effects.
 
-# ✗ ANTI-PATTERN 10: Using safe-mode via SSH without PTY allocation
-# ssh router '/safe-mode take on-error=unroll; ...'  # SILENTLY FAILS!
-# Without -tt flag, safe-mode reports "Success!" but state is immediately false.
-# CORRECT: ssh -tt router '/safe-mode take ...'  # PTY required!
+# ✗ ANTI-PATTERN 10: PRE-7.18 ONLY — non-PTY safe-mode now WORKS
+# Pre-7.18: ssh router '/safe-mode take on-error=unroll; ...' silently failed
+# (state was immediately false). 7.18+ FULLY supports non-PTY safe-mode:
+# enabled=true, current=true, owner=console, take/release/unroll all work.
+# The current trap is the OPPOSITE: explicit /safe-mode release REQUIRED;
+# clean script end auto-UNROLLS. See PATTERN 11.3.
 
 # ✗ ANTI-PATTERN 11: Assuming global variables are protected
 # :global myConfig "original";
@@ -646,20 +725,23 @@
 # │ ✗ Pre-7.18: :error is script-level, NOT session-level - no rollback trigger    │
 # │ ✓ 7.18+: :error terminates script, handler fires, unrolls if on-error=unroll  │
 # │ ✗ Interface disable = instant lockout, safe-mode cannot save you               │
-# │ ✗ Each SSH command invocation = separate session = safe-mode state lost        │
+# │ ✗ Each SSH command = separate session; only explicit release commits           │
 # │ ✗ on-error=ask hangs in scripts                                                │
 # │ ✗ Requires RouterOS >= 7.18                                                    │
-# │ ✗ :execute scopes safe-mode to subprocess - auto-releases on completion!       │
+# │ ✗ :execute SHARES caller's safe-mode TX (NOT a sandbox); rolls back on outer   │
 # │ ✗ release/unroll on inactive = NOT catchable; prints "Safe Mode has not        │
 # │   been taken" but :onerror does NOT trigger — script just continues            │
 # │ ✓ Catchable errors carry message as type "str" in the captured variable        │
 # │ ✗ Certificates NOT tracked - /certificate persists after unroll                │
 # │ ✗ External actions NOT undone - email/fetch/SNMP already sent!                 │
 # │ ✗ Global variables, log entries, runtime data NOT tracked                      │
-# │ ✗ No transaction ISOLATION - changes visible immediately before release        │
+# │ ✗ No isolation — concurrent sessions see in-flight changes immediately         │
+# │ ✗ Same-user 2nd take STEALS ownership AND COMMITS prior pending changes        │
+# │ ✗ /system script run inherits caller's TX; outer auto-unroll wipes inner work  │
+# │ ✗ Caught :error does NOT trigger handler — partial state persists              │
 # │ ✗ take() returns bool:true (was nil pre-7.18); double-take returns nil          │
 # │ ✓ File operations (/file) ARE tracked on all platforms                         │
-# │ ✓ :execute + on-error=unroll CAN provide micro-transactions (Section 13)       │
+# │ ✗ :execute "micro-transactions" share outer TX — NOT independent rollback      │
 # │ ✓ 7.18+: :safe-mode (colon prefix) equivalent to /safe-mode in scripts         │
 # └────────────────────────────────────────────────────────────────────────────────┘
 
@@ -757,6 +839,70 @@
 #   # → comment is unrolled (NOT released, despite on-error=release)
 # This means: in scripted contexts, only an explicit /safe-mode release
 # can commit. on-error=release is functionally a no-op for ros-deploy/import.
+# REF-AUDIT-SM-ONERROR-RELEASE-NOOP 2026-04-30 7.23rc2.
+
+# RULE 14.9: Handler persists across :execute + :delay (verified 7.23rc2)
+# Safe-mode does NOT have an idle timeout. A session may hold safe-mode
+# across long :execute jobs and :delay calls without auto-release. Verified:
+# take + :execute (5s) + :delay 7s → still enabled=true, current=true; manual
+# release commits cleanly.
+# REF-AUDIT-SM-TIMEOUT-INTERACTION 2026-04-30 7.23rc2.
+
+# RULE 14.10: Rapid take/release cycle is leak-free (verified 7.23rc2)
+# 100 sequential :do { /safe-mode take; /safe-mode release } iterations
+# completed with zero errors and final enabled=false / current=false. No
+# resource leak observed.
+# REF-AUDIT-SM-RAPID-TAKE-RELEASE-CYCLE 2026-04-30 7.23rc2.
+
+# RULE 14.11: PTY vs non-PTY equivalence — partially verified
+# Non-PTY (ros-deploy / ssh user@router 'cmd'): safe-mode FULLY supported on
+# 7.18+; owner field reads "console". PTY-side equivalence NOT confirmable —
+# RouterOS rejects PTY ssh + command argument (interactive shell hangs or
+# aborts on input). Treat owner=console as the only empirically-confirmed
+# value for scripted execution. Use the user: row of /safe-mode print for
+# user-level attribution; owner is uninformative.
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │       14a. ISOLATION & MULTI-SESSION REALITY (verified 7.23rc2)             │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# CRITICAL: Safe-mode does NOT provide cross-session isolation. Multiple SSH
+# or scripted sessions share global safe-mode state. The implications below
+# are surprising and broken-by-design — treat safe-mode as a SINGLE-SESSION
+# rollback aid, never as a multi-process coordination primitive.
+
+# RULE 14a.1: No mid-transaction read isolation
+# Concurrent session B (no take) sees session A's IN-FLIGHT uncommitted
+# config additions, deletions, and modifications. The "enabled" flag is
+# global; only the "current" flag is per-session.
+# REF-AUDIT-SM-NO-ISOLATION-MULTISESSION 2026-04-30 7.23rc2.
+
+# RULE 14a.2: Same-user contention SUCCEEDS and COMMITS prior pending changes
+# When session A holds safe-mode and same-user session B calls /safe-mode
+# take, B's take SUCCEEDS (returns bool:true). B becomes the new owner. A's
+# pending changes are NOT discarded — they are COMMITTED into the
+# configuration. B then begins a fresh transaction; B's auto-unroll on
+# script-end rolls back B's transaction only. This is fundamentally broken
+# mutex semantics: do NOT rely on safe-mode for cross-process atomicity.
+# REF-AUDIT-SM-SAME-USER-CONTENTION 2026-04-30 7.23rc2.
+
+# RULE 14a.3: owner=console invariant (no per-session attribution)
+# Every non-PTY scripted session reports owner=console. The field is
+# useless for "which session has it". Use /safe-mode print's user: row
+# as a coarse attribution; do NOT assume owner discriminates between two
+# sessions of the same user (it does not).
+
+# RULE 14a.4: Cross-USER second `take` — DEFERRED (lab limitation)
+# Sprint 7 only had user `ni` available on the CHR; cross-user contention
+# semantics (whether B-as-other-user can take while A-as-ni holds) NOT
+# empirically determined. Cross-user `take` raising a CATCHABLE error is
+# documented historical behavior — see RULE 6.2 — but not re-verified on
+# 7.23rc2 with this audit.
+
+# RULE 14a.5: External orchestration is the ONLY reliable mutex
+# If two deployment scripts must not interfere, serialize them at the
+# orchestration layer (file lock, scheduler queue, single-deployer script).
+# Do NOT assume safe-mode protects against concurrent operators.
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │              15. /IMPORT TOOLING - DRY-RUN AND VERBOSE (7.16+)              │
@@ -844,6 +990,21 @@
 #   - /import file-name=... verbose=yes dry-run  → comment unchanged
 #   - /import file-name=... verbose=yes          → comment becomes "X"
 # Conclusion: dry-run is SAFE to use for syntax validation of unknown files.
+# REF-AUDIT-SM-DRY-RUN-NO-EFFECT 2026-04-30 7.23rc2.
+# Bare-flag form (no =yes) confirmed in REF-AUDIT-DRYRUN-VERIFY (separate sprint).
+# A safe-mode `take` inside a dry-run file is a NO-OP — dry-run does not
+# execute any commands at all (the take line is parsed but not invoked).
+
+# RULE 15.9: from-line= silently DISABLED without verbose= (7.23rc2 finding)
+# When /import is invoked with from-line=N but WITHOUT verbose=yes (or
+# verbose=progress), RouterOS emits a non-fatal warning:
+#   "Warning: from-line parameter does not work for non-verbose import"
+# AND silently runs the import from line 1, ignoring from-line entirely. The
+# warning is easy to miss in non-interactive deploys; LLM-generated scripts
+# that rely on partial-line resume must ALWAYS pair from-line= with
+# verbose=yes or verbose=progress.
+# REF-AUDIT-SM-IMPORT-FROMLINE-PAST-EOF 2026-04-30 7.23rc2.
+# See anti-pattern #107.
 
 # ┌────────────────────────────────────────────────────────────────────────────────┐
 # │ /IMPORT PARAMETER QUICK REFERENCE (7.16+)                                      │
