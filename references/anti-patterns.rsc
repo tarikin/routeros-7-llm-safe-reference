@@ -625,13 +625,22 @@
 :put [:typeof $ts];                     # => time (not num!)
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ 52. NETWATCH RUNS AS sys USER - LIMITED PERMISSIONS!                        │
+# │ 52. NETWATCH SYS-USER PERMISSIONS — fetch WORKS on 7.23rc2 (was 7.13+ bug)  │
 # └─────────────────────────────────────────────────────────────────────────────┘
-# ✗ WRONG - Assuming full permissions in netwatch:
-# /tool netwatch on-down="/tool fetch ..."  # FAILS in v7.13+!
+# Historical claim: on early v7.13+, netwatch's sys user lacked ftp policy and
+# /tool fetch raised an error. REF-AUDIT-FETCH-NETWATCH-SYS 2026-04-30 7.23rc2
+# VERIFIED THE OPPOSITE: a netwatch down-script that runs /tool fetch against
+# http://1.1.1.1/ completes with `resp-status=finished` (HTTP 2xx). The
+# permission constraint was either restored or the original failure was
+# misdiagnosed; current 7.23rc2 lab confirms fetch works from netwatch context.
+# ✗ HISTORICAL CLAIM (now FALSIFIED on 7.23rc2):
+# /tool netwatch ... down-script="/tool fetch url=..."  # was thought to fail
 
-# sys user has: read, write, test, reboot
-# sys user LACKS: ftp (required for fetch!)
+# ✓ CURRENT (7.23rc2) — fetch works from netwatch on-down/on-up directly:
+# /tool netwatch add host=... down-script=":do { /tool fetch url=... } on-error={...}"
+# Pre-7.X behavior unverified on this audit; if you target legacy versions,
+# wrap fetch in :onerror and treat failure as policy-related rather than
+# network-related when running in netwatch context.
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 53. GLOBALS PERSIST UNTIL REBOOT                                            │
@@ -760,11 +769,15 @@
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 66. /log print as-value DOES NOT SUPPORT count                              │
 # └─────────────────────────────────────────────────────────────────────────────┘
+# `count=N` raises `expected end of command (line 1 column 26)` — NOT a valid
+# parameter. To bound result-set size, use `where` then post-truncate via :pick.
+# VERIFIED REF-AUDIT-LOG-PRINT-AS-VALUE 2026-04-30 7.23rc2.
 # ✗ WRONG - Using count with as-value:
-# :local logs [/log print as-value count=5];  # FAILS (Syntax Error)
+# :local logs [/log print as-value count=5];  # FAILS (parse error)
 
-# ✓ CORRECT - Use where to filter, or filtering loop:
+# ✓ CORRECT - Use where to filter; cap via :pick post-filter:
 :local logs [/log print as-value where topics~"system"];
+:local first5 [:pick $logs 0 5];      # truncate post-query (no count= shortcut exists)
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 67. LOG TIME IS str TYPE (ISO FORMAT)                                       │
@@ -880,8 +893,10 @@
 # `:exit` was added in 7.22. It looks like a loop-control primitive, but it
 # terminates the ENTIRE script — same blast radius as `:quit`. The only
 # differences from `:quit` are: it's silent (no "interrupted" output) and
-# it accepts NO argument (`:exit "msg"` / `:exit 1` are parse errors).
+# it accepts NO argument: `:exit 0` / `:exit 5` raise runtime "bad parameter <n>",
+# `:exit "x"` raises parse-time "expected end of command".
 # `:onerror` cannot catch `:exit` (it is not an error condition).
+# VERIFIED REF-AUDIT-EXIT-CODE-SYNTAX 2026-04-30 7.23rc2.
 
 # ✗ WRONG — using :exit to break out of a loop:
 # :foreach i in={1;2;3;4} do={
@@ -1133,14 +1148,16 @@
 :for i from=1 to=10 step=2 do={ :put $i };     # => 1 3 5 7 9
 # Hard cap: :range output > 1,000,000 elements raises "size of the ranged array
 # is too large (max 1000000)". Use :for for unbounded iteration.
+# VERIFIED REF-AUDIT-RANGE-1M-CAP 2026-04-30 7.23rc2.
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │ 83. :rndnum from > to RETURNS GARBAGE INT64 (NO ERROR)                      │
 # └─────────────────────────────────────────────────────────────────────────────┘
 
 # When :rndnum is called with from > to it does NOT error and does NOT clamp;
-# it returns an arbitrary int64 (often a giant negative from uninitialised
-# memory). Reproducible 7.23rc2: [:rndnum from=10 to=1] -> -7956501532190287755.
+# it returns an arbitrary int64 spanning the full ±9.2e18 range (uninitialised
+# memory or unbounded RNG). VERIFIED REF-AUDIT-RNDNUM-WRAP-GARBAGE 2026-04-30
+# 7.23rc2: 10 samples observed across [-8.59e18, +8.70e18].
 # ✗ WRONG:
 # :local pick [:rndnum from=$max to=$min];     # silent garbage when max > min
 # ✓ CORRECT — always order arguments low->high; defend with a swap:
@@ -1171,8 +1188,9 @@
 
 # 7.16 changelog says ":lock command to lock screen". In non-interactive
 # script context (/import, ros-deploy, /system script run), :lock returns
-# immediately (~20us) and does NOT block, even with delay=5s. Verified on
-# 7.23rc2: [:time {:lock delay=5s}] elapses ~23 microseconds.
+# immediately (~20us) and does NOT block, even with delay=5s.
+# VERIFIED REF-AUDIT-LOCK-SCRIPT-NOOP 2026-04-30 7.23rc2:
+# [:time {:lock delay=5s}] = 18 microseconds.
 # ✗ WRONG:
 # :lock delay=30s;                              # writer expected a 30s pause
 # :put "after 30s";                             # actually prints immediately
@@ -1187,7 +1205,10 @@
 # Developers may try [:rndstr length=20 source="0123456789"] or
 # alphabet= / chars= / type= expecting custom-alphabet random strings; all
 # such parameters are rejected on 7.23rc2 with "expected end of command".
-# Default length is 16; fixed alphabet [A-Za-z0-9].
+# Default length is 16; fixed alphabet base62 = [0-9A-Za-z]
+# (10 + 26 + 26 = 62 chars; URL/shell-safe; uniform distribution).
+# VERIFIED REF-AUDIT-RNDSTR-CHARSET 2026-04-30 7.23rc2 (1280 sampled chars
+# saw all 62 in the alphabet; no punctuation, no underscores, no separators).
 # ✗ WRONG:
 # :local digits [:rndstr length=8 source="0123456789"];
 # # => Script Error: expected end of command
@@ -1209,6 +1230,7 @@
 # DNS record-type names (A, AAAA, MX, TXT, NS, CNAME, SOA, SRV, PTR) are ALL
 # rejected at runtime ("input does not match any value of type"). Bare
 # uppercase identifiers (type=A) are PARSE errors before runtime.
+# VERIFIED REF-AUDIT-RESOLVE-TYPE-ENUM 2026-04-30 7.23rc2.
 # ✗ WRONG:
 # :put [:resolve "google.com" type=A];          # parse error (uppercase ident)
 # :put [:resolve "google.com" type="A"];        # runtime error (no match)
@@ -1284,9 +1306,11 @@
 # └─────────────────────────────────────────────────────────────────────────────┘
 
 # A 7.15-era changelog mentioned VRF support for :resolve, but on 7.23rc2 the
-# parameter is rejected with "bad parameter vrf". The accepted parameters are
-# domain-name=, type=, and server= only. VRF control happens at the DNS
-# service level (/ip dns set vrf=...), not at the :resolve call.
+# parameter is rejected with "bad parameter vrf" (parse-time). The accepted
+# parameters are domain-name=, type=, and server= only. VRF control happens at
+# the DNS service level (/ip dns set vrf=...), not at the :resolve call.
+# VERIFIED REF-AUDIT-RESOLVE-VRF 2026-04-30 7.23rc2 (vrf=main and
+# vrf=nonexistent both rejected identically).
 # ✗ WRONG:
 # :put [:resolve "google.com" vrf=main];        # => bad parameter vrf
 # :put [:resolve "google.com" vrf=mgmt];        # => bad parameter vrf
@@ -1421,6 +1445,9 @@
 # /import dry-run is verbose-only — using it without verbose=yes/progress raises
 # a catchable error. Library users often expect dry-run to be a standalone flag
 # that suppresses output too — it isn't.
+# VERIFIED REF-AUDIT-DRYRUN-VERIFY 2026-04-30 7.23rc2: dry-run works as a
+# bare flag in top-level, :do {}, and :onerror in={} contexts identically;
+# emits "No syntax errors found in the import file" then returns control.
 # ✗ WRONG:
 # /import file-name="config.rsc" dry-run;
 # # => Error: "dry-run parameter cannot be used in non-verbose mode"

@@ -153,10 +153,15 @@
 # BEHAVIOR & EXIT
 # :lock (7.16+, interactive only) — locks the local console screen; takes optional delay=<time>
 # In script context (/import, ros-deploy, /system script run) :lock is a NO-OP that returns nil
-# immediately (verified: [:time {:lock delay=5s}] elapses ~20us). Use :delay if you want a pause.
+# immediately. VERIFIED REF-AUDIT-LOCK-SCRIPT-NOOP 2026-04-30 7.23rc2:
+# [:time {:lock delay=5s}] = 18 microseconds. Use :delay for actual pauses.
 # :lock; :lock delay=10s; :lock 10s;        # all return nil in scripts
 :onerror err in={ :resolve "no-such-domain" } do={ :put "Error => $err" };
 # :resolve type= (7.15+) selects ADDRESS FAMILY {ipv4|ipv6|any|any6}, NOT DNS record-type.
+# A/AAAA/MX/TXT/etc. all reject with "input does not match any value of type".
+# vrf= parameter is REJECTED (parse error "bad parameter vrf"); use /tool fetch vrf= /
+# /tool ping vrf= for VRF-scoped operations.
+# VERIFIED REF-AUDIT-RESOLVE-TYPE-ENUM + REF-AUDIT-RESOLVE-VRF 2026-04-30 7.23rc2.
 # Record-type names (A, AAAA, MX, TXT, NS, CNAME, SOA, SRV, PTR) are REJECTED.
 :put [:resolve "google.com" type=ipv4];   # => 142.251.142.238 (typeof=ip)
 :put [:resolve "google.com" type=ipv6];   # => 2a00:1450:400f:802::200e (typeof=ip6)
@@ -178,6 +183,9 @@
 
 # :range (7.17+) — generate ascending/descending integer arrays
 # Signature: [:range from=<int> to=<int>]  (NO step= parameter; use :for for stride)
+# VERIFIED REF-AUDIT-RANGE-1M-CAP 2026-04-30 7.23rc2: hard cap 1,000,000 elements.
+# `[:range from=1 to=1000001]` raises catchable error
+# `size of the ranged array is too large (max 1000000) (:range; line N)`.
 :put [:range from=1 to=5];          ; # => 1;2;3;4;5
 :put [:range from=5 to=1];          ; # => 5;4;3;2;1   (descending — :foreach iterates in order)
 :put [:range from=7 to=7];          ; # => 7           (single-element array)
@@ -189,9 +197,13 @@
 # IPv6 NOT accepted; IP/time auto-coerced to int. Result element type is num.
 # :rndnum / :rndstr — random primitives
 :put [:rndnum from=1 to=10];        ; # => 1..10 inclusive (typeof=num)
-:put [:rndstr length=8];            ; # => 8 chars from [A-Za-z0-9] (default len=16)
-# CAUTION: [:rndnum from=10 to=1] does NOT error; returns garbage int64. Always order from<=to.
-# :rndstr charset is FIXED; no source=/alphabet=/chars=/type= parameters on 7.23rc2.
+:put [:rndstr length=8];            ; # => 8 chars from base62 [0-9A-Za-z] (default len=16)
+# CAUTION: [:rndnum from=10 to=1] does NOT error; returns FULL-RANGE int64 garbage
+# (samples observed across ±9.2e18). Always order from<=to.
+# VERIFIED REF-AUDIT-RNDNUM-WRAP-GARBAGE 2026-04-30 7.23rc2.
+# :rndstr charset is base62 = [0-9A-Za-z] (10 + 26 + 26 = 62 chars; URL/shell-safe).
+# No source= / alphabet= / chars= / type= parameters; they all parse-error.
+# VERIFIED REF-AUDIT-RNDSTR-CHARSET 2026-04-30 7.23rc2.
 
 # RETRY COMMAND
 :if ([/file print count-only where name=$ramdiskName type=disk]=0) do={
