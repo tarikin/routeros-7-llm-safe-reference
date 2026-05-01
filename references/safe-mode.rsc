@@ -165,10 +165,23 @@
 # RULE 5.6: Changes tracked in /system history with UNDOABLE flag
 # /system history print shows: U - UNDOABLE for rollback-capable changes
 
-# RULE 5.7: Reboot behavior
-# - Changes tracked in RAM (undo buffer)
-# - Reboot = RAM cleared = pending changes LOST if not committed
-# - This is intended behavior - safe-mode is not persistent across reboots
+# RULE 5.7: Reboot / power-loss behavior
+# - Graceful /system reboot while safe-mode is active triggers rollback before
+#   boot completes. Verified on CHR 7.23rc2: set `/system/logging` rule 0 from
+#   topics=info to topics=info,!system inside safe-mode, then /system/reboot;
+#   after boot safe-mode was false and topics were restored to info.
+# - HARD power loss / VM process kill is different: no handler runs. The live
+#   config mutation may persist while the safe-mode RAM undo buffer is lost.
+#   Verified on CHR 7.22.2 stable under UTM: take safe-mode; set
+#   `/system/logging` rule 0 topics=info,!system; confirm second session sees
+#   safe-mode enabled and topics changed; `utmctl stop <vm> --kill`; start VM;
+#   after boot safe-mode=false and topics=info,!system persisted.
+# - Product implication: safe-mode is not a durable crash/power-loss recovery
+#   mechanism for persistent config mutations. Do not use it as the only guard
+#   against permanent mutation of logging, management access, or other critical
+#   config under hard power-loss assumptions.
+# REF-AUDIT-SM-GRACEFUL-REBOOT-UNROLL 2026-05-01 7.23rc2.
+# REF-AUDIT-SM-HARD-KILL-PERSISTS 2026-05-01 7.22.2 CHR UTM.
 
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -812,6 +825,17 @@
 # on-error=release → commit on network/session drop (still true)
 # These do NOT apply to normal script completion in non-PTY SSH context
 # (handler overrides: always unrolls unless explicit release is called)
+
+# RULE 14.5a: Hard process kill / power loss is NOT session termination
+# The safe-mode handler is software running in RouterOS. If RouterOS does not
+# get CPU time to run the handler, no unroll occurs. A UTM `stop --kill` test
+# on CHR 7.22.2 left `/system/logging` rule 0 mutated after boot:
+#   before: topics=info
+#   in safe-mode: topics=info,!system (visible from second SSH session)
+#   after VM process kill + start: safe=false, topics=info,!system
+# Clean up manually restored topics=info. This is distinct from graceful
+# `/system/reboot`, which did unroll on CHR 7.23rc2.
+# REF-AUDIT-SM-HARD-KILL-PERSISTS 2026-05-01 7.22.2 CHR UTM.
 
 # RULE 14.6: :safe-mode inside functions (7.18+)
 :local fn do={

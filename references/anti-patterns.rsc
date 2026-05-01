@@ -1700,3 +1700,30 @@
 # ✓ CORRECT — pair from-line with verbose=yes (or verbose=progress):
 /import file-name="config.rsc" verbose=yes from-line=42;
 
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ 108. TRUSTING SAFE-MODE AS A HARD POWER-LOSS RECOVERY GUARANTEE             │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Safe-mode rollback is not durable crash recovery. It can unroll on graceful
+# script/session termination, and graceful `/system reboot` was verified to
+# restore `/system/logging` on CHR 7.23rc2. But if RouterOS is killed hard, the
+# handler does not run and the RAM undo buffer is lost.
+#
+# REF-AUDIT-SM-HARD-KILL-PERSISTS 2026-05-01 7.22.2 CHR UTM:
+#   Baseline: /system/logging rule 0 topics=info.
+#   Session A: /safe-mode take; set rule 0 topics=info,!system; delay.
+#   Session B: confirmed safe-mode enabled and topics=info,!system.
+#   Host: `utmctl stop <CHR_x86_v2 UUID> --kill`; then start VM.
+#   After boot: safe-mode=false, topics=info,!system persisted.
+#
+# ✗ WRONG — assuming safe-mode alone prevents permanent mutation under power
+# loss or kernel panic:
+# /safe-mode take on-error=unroll;
+# /system logging set 0 topics=info,!system;
+# # VM/process/router dies here; mutation may persist after boot.
+#
+# ✓ CORRECT — avoid persistent critical config mutation in unattended windows,
+# or pair it with a separate durable boot-time recovery/audit mechanism:
+# # Prefer rule design that needs no runtime logging mutation, e.g. info,!system.
+# # If mutation is unavoidable, write an explicit persistent recovery marker
+# # before mutation and clear it only after verified restore.
