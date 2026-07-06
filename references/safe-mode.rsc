@@ -1013,9 +1013,12 @@
 # vs script-only nuances apply per command. Side-effect tests confirm that
 # `:global x` followed by `:set x "value"` inside an imported file DOES
 # produce a runtime-visible global if executed normally.
-# IMPORTANT: variable identifiers cannot contain underscores in any RouterOS
-# script context (import or otherwise) — `:global T6_VAR` raises
-# "expected end of command" at the underscore. Use camelCase: `t6Var`.
+# IMPORTANT: BARE (unquoted) variable identifiers cannot contain underscores or
+# hyphens in any RouterOS script context (import or otherwise) — `:global T6_VAR`
+# raises "expected end of command" at the underscore. Use camelCase (`t6Var`) OR
+# quote the name: `:global "T6_VAR"` / `$"T6_VAR"` ARE valid (special chars
+# require quotes — see scope.rsc RULE 8.1 / anti-patterns.rsc #1). Verified
+# 2026-07-06: quoted form → ros-lint "Syntax OK", inspect types it variable-global.
 
 # RULE 15.8: dry-run zero-side-effect proof (verified 7.23rc2)
 # A file containing `/interface ethernet set ether1 comment="X"` was tested:
