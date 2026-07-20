@@ -88,8 +88,8 @@ This index serves as the **authoritative map** for AI agents. It links user inte
 
 - **File**: `insights/acme-client-behavior.md`
 - **Link**: [insights/acme-client-behavior.md](insights/acme-client-behavior.md)
-- **Topics**: ACME, Let's Encrypt, renewal logic, port 80 requirements.
-- **Instruction**: Read this when automating certificate management.
+- **Topics**: ACME (RouterOS 7.23+), `add-acme`, Let's Encrypt, `certificate` log-topic vocabulary, fire-timing model (`invalid-after − lifetime/5`), fresh-vs-renewal retry asymmetry, self-heal, auth cache, port 80 requirements, rate limits.
+- **Instruction**: Read this when automating or reasoning about RouterOS 7.23+ certificate management. CRITICAL: the ACME subsystem was **refactored in 7.22 and stabilized in 7.23** — do NOT extrapolate 7.21 behavior (log strings, retry logic, and the fire model all changed). Contains verbatim 7.23.2 daemon log strings, the fire model, and failure/recovery semantics.
 
 - **File**: `insights/ssh-private-key-import.md`
 - **Link**: [insights/ssh-private-key-import.md](insights/ssh-private-key-import.md)

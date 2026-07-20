@@ -49,6 +49,17 @@ Each file is **battle-tested** on real RouterOS 7.21 hardware. Use them as conte
 
 ## 🚀 Changelog
 
+### July 2026
+
+**ACME Client Behavior (RouterOS 7.23+)** — refreshed for the 7.22 refactor / 7.23 stabilization, verified on CHR 7.23.2 stable (Pebble 2.10.1 + Let's Encrypt staging):
+
+- ✅ **Subsystem Refactor**: Documented that ACME was refactored starting 7.22 and stabilized in 7.23 — 7.21 behavior no longer extrapolates (log topic, retry logic, fire model all changed)
+- ✅ **Daemon Log Vocabulary**: Verbatim 7.23.2 `certificate,info`/`certificate,error` strings; `challenge validation failed` as the stable reachability anchor; ISO-Zulu (import) vs dotted-UTC (renewal/retry) timestamp split; `topics=acme-client` does not exist
+- ✅ **Fire Model**: Renewal fires at `invalid-after − lifetime/5` (80% of lifetime, +~14 s jitter); 90-day cert → `invalid-after − 18 d`, confirmed on a real LE staging cert
+- ✅ **Retry Asymmetry**: Fresh `add-acme` is single-shot (no auto-retry); a live renewal order self-heals (~27–31 s reachability, ~15 s directory-down) — "retries exhausted" is NOT terminal on a live order
+- ✅ **Failure & Recovery**: `/certificate remove` blocked for a cert's active lifetime; a stuck order survives `/system reboot` (heal-then-remove); forward clock-jump runaway renewal storm; 5-failed-authz/hour LE budget
+- ✅ **Re-Capture Rule**: Daemon log strings are not stable across point releases (7.23rc2→7.23.1 CSR-transient rename) — re-verify the vocabulary on every upgrade
+
 ### January 2026
 
 **Safe-Mode Transactions** — 50+ empirical tests on CHR 7.21:
@@ -144,7 +155,7 @@ Deep dives into specific RouterOS behaviors, established through rigorous testin
 
 | Topic                                                                  | Description                                            |
 | :--------------------------------------------------------------------- | :----------------------------------------------------- |
-| [**ACME Client Behavior**](insights/acme-client-behavior.md)           | Renewal logic, auth caching, and scheduler constraints |
+| [**ACME Client Behavior**](insights/acme-client-behavior.md)           | **7.23+** daemon log vocabulary, fire model, retry/self-heal, auth caching (7.22 refactor / 7.23.2 stable) |
 | [**SSH Private Key Import**](insights/ssh-private-key-import.md)       | Key types (RSA only), PEM format, and import quirks    |
 | [**SSH Public Key Import (User)**](insights/ssh-public-key-import.md)  | User login keys, Ed25519 support, and anti-patterns    |
 | [**SSH Automation & Execution**](insights/ssh-automation-execution.md) | `ssh-exec` vs `ssh`, capture patterns, and TOFU traps  |
